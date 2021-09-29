@@ -49,7 +49,7 @@ def get_partitioned_datasets(
     data_num: int,
     batch_size: int,
     data_path: str) \
-    -> List[Subset]:
+    -> 'list[Subset]':
 
     if task == "FashionMNIST":
         train_dataset = datasets.FashionMNIST(
