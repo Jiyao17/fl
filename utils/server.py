@@ -6,24 +6,26 @@ from torch import nn, Tensor
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import Dataset
 import torchaudio
+from client import Client
+
+from utils.funcs import Config
 
 class Server():
-    def __init__(self):
+    def __init__(self, configs: Config):
+        self.configs = configs
 
-        self.init_task()
+        self.model: nn.Module = None
 
-    def init_task(self):
-        pass
+    def distribute_model(self, clients: 'list[Client]'):
+        state_dict = self.model.state_dict()
+        for client in clients:
+            client.get_model().load_state_dict(state_dict)
+            client.get_model().to(client.device)
 
-    def distribute_model(self):
-        """
-        Send global model to clients.
-        """
-
-    def aggregate_model(self):
+    def aggregate_model(self, clients: 'list[Client]'):
         state_dicts = [
-            client.model.state_dict()
-            for client in self.clients
+            client.get_model().state_dict()
+            for client in clients
             ]
         # calculate average model
         state_dict_avg = copy.deepcopy(state_dicts[0]) 
@@ -33,9 +35,10 @@ class Server():
             state_dict_avg[key] = torch.div(state_dict_avg[key], len(state_dicts))
         
         self.model.load_state_dict(state_dict_avg)
+        self.model.to(self.configs.device)
 
     def test_model(self) -> float:
-        self.model = self.model.to(self.device)
+        self.model = self.model.to(self.configs.device)
         self.model.eval()
 
     def reset_model(self):
