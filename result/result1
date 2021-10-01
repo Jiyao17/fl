@@ -1,0 +1,2 @@
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
+FashionMNIST         100          3      10000           5          256 0.01

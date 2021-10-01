@@ -31,7 +31,7 @@ class Config:
         self.datapath: str = datapath
         self.device: torch.device = torch.device(device)
         self.result_dir: str = result_dir
-        self.verbosity:int = verbosity,
+        self.verbosity:int = verbosity
         self.simulation_num: int = simulation_num
 
         self.simulation_index:int = simulation_index

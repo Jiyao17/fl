@@ -12,9 +12,7 @@ from utils.client import Client
 from utils.server import Server
 from utils.funcs import Config
 
-def __single_simulation(
-    configs: Config
-    ):
+def single_simulation(configs: Config):
     simulator = __SingleSimulator(configs)
     simulator.start()
 
@@ -22,7 +20,7 @@ class __SingleSimulator:
     def __init__(self, configs: Config) -> None:
         self.configs = configs
 
-        self.server: Server = None
+        self.server = Server(self.configs)
         self.clients: list[Client] = []
 
     def start(self):
@@ -53,7 +51,7 @@ class __SingleSimulator:
 
     def configure_clients(self):
         
-        clients = [Client]
+        clients:'list[Client]' = []
 
     def get_partitioned_datasets(self,
         task: str,
@@ -70,11 +68,11 @@ class __SingleSimulator:
                 download=True,
                 transform=ToTensor(),
                 )
-        elif task == "SpeechCommand":
-            train_dataset = SubsetSC("training", data_path)
-        elif task == "AG_NEWS":
-            train_iter = AG_NEWS(split="train")
-            train_dataset = to_map_style_dataset(train_iter)
+        # elif task == "SpeechCommand":
+            # train_dataset = SubsetSC("training", data_path)
+        # elif task == "AG_NEWS":
+            # train_iter = AG_NEWS(split="train")
+            # train_dataset = to_map_style_dataset(train_iter)
 
         dataset_size = len(train_dataset)
         # subset division
@@ -95,11 +93,11 @@ class __SingleSimulator:
                 download=True,
                 transform=ToTensor()
                 )
-        elif task == "SpeechCommand":
-            test_dataset = SubsetSC("testing", data_path)
-        elif task == "AG_NEWS":
-            test_iter = AG_NEWS(split="test")
-            test_dataset = to_map_style_dataset(test_iter)
+        # elif task == "SpeechCommand":
+        #     test_dataset = SubsetSC("testing", data_path)
+        # elif task == "AG_NEWS":
+        #     test_iter = AG_NEWS(split="test")
+        #     test_dataset = to_map_style_dataset(test_iter)
 
         return test_dataset
 
@@ -119,7 +117,7 @@ class Simulator:
         # optional
         ap.add_argument("-p", "--datapath", type=str, default="/home/tuo28237/projects/fledge/data/")
         ap.add_argument("-d", "--device", type=str, default="cpu")
-        ap.add_argument("-r", "--result_dir", type=str, default="./result.txt")
+        ap.add_argument("-r", "--result_dir", type=str, default="./result")
         ap.add_argument("-v", "--verbosity", type=int,default=1)
         ap.add_argument("-n", "--simulation_num", type=int, default=1)
         # self.ap.add_argument("-f", "--progress_file", type=str, default="./progress.txt")
@@ -143,11 +141,11 @@ class Simulator:
                 ))
 
         set_start_method("spawn")
-        procs: list[Process] = []
+        procs = []
         for i in range(self.configs.simulation_num):
             self.configs.simulation_index = i
             proc = Process(
-                    target=__single_simulation,
+                    target=single_simulation,
                     args=(self.configs, ))
             proc.start()
             procs.append(proc)
@@ -155,32 +153,32 @@ class Simulator:
         for proc in procs:
             proc.join()
 
-    def parse_args(self):
+    def get_configs(self):
         ap = self.__get_argument_parser()
+        args = ap.parse_args()
 
-        task_name: str = ap.task_name # limited: FashionMNIST/SpeechCommand/
+        task_name: str = args.task_name # limited: FashionMNIST/SpeechCommand/
         # global parameters
-        g_epoch_num: int = ap.g_epoch_num
+        g_epoch_num: int = args.g_epoch_num
         # local parameters
-        client_num: int = ap.client_num
-        l_data_num: int = ap.l_data_num
-        l_epoch_num: int = ap.l_epoch_num
-        l_batch_size: int = ap.l_batch_size
-        l_lr: float = ap.l_lr
+        client_num: int = args.client_num
+        l_data_num: int = args.l_data_num
+        l_epoch_num: int = args.l_epoch_num
+        l_batch_size: int = args.l_batch_size
+        l_lr: float = args.l_lr
         # shared settings
-        datapath: str = ap.datapath
-        device: torch.device = torch.device(ap.device)
-        result_dir: str = ap.result_dir
+        datapath: str = args.datapath
+        device: torch.device = torch.device(args.device)
+        result_dir: str = args.result_dir
 
-        verbosity: int = ap.verbosity
-        simulation_num: int = ap.simulation_num
+        verbosity: int = args.verbosity
+        simulation_num: int = args.simulation_num
         # self.progress_file: str = self.ap.progress_file
 
-
-        self.check_device()
         self.configs = Config(task_name, g_epoch_num, client_num,
             l_data_num, l_epoch_num, l_batch_size, l_lr, datapath,
             device, result_dir, verbosity, simulation_num)
+        self.check_device()
 
     def check_device(self) -> bool:
         if self.configs.device == torch.device("cpu"):

@@ -31,7 +31,8 @@ class Client():
         self.task.model.load_state_dict(state_dict)
         
     def train_model(self) -> float:
-        return self.task.train()
+        pass
+        # return self.task.train()
 
     def test_model(self) -> float:
         pass
