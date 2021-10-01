@@ -1,7 +1,6 @@
 
 from argparse import ArgumentParser, Namespace
 from multiprocessing import Process, Queue, set_start_method
-from os import confstr
 
 
 import torch
@@ -107,7 +106,7 @@ class __SingleSimulator:
 class Simulator:
 
     @staticmethod
-    def get_argument_parser() -> ArgumentParser:
+    def __get_argument_parser() -> ArgumentParser:
         ap = ArgumentParser()
         # positional
         ap.add_argument("task_name", type=str)
@@ -131,8 +130,7 @@ class Simulator:
         self.supported_tasks = ["FashionMNIST", "SpeechCommand", "AG_NEWS"]
         self.configs: Config = None
         
-        self.parse_args()
-        self.check_device()
+        # self.parse_args()
 
     def start(self):
         if self.configs.verbosity >= 2:
@@ -158,7 +156,7 @@ class Simulator:
             proc.join()
 
     def parse_args(self):
-        ap = self.get_argument_parser()
+        ap = self.__get_argument_parser()
 
         task_name: str = ap.task_name # limited: FashionMNIST/SpeechCommand/
         # global parameters
@@ -178,6 +176,8 @@ class Simulator:
         simulation_num: int = ap.simulation_num
         # self.progress_file: str = self.ap.progress_file
 
+
+        self.check_device()
         self.configs = Config(task_name, g_epoch_num, client_num,
             l_data_num, l_epoch_num, l_batch_size, l_lr, datapath,
             device, result_dir, verbosity, simulation_num)
