@@ -1,6 +1,8 @@
 
 from argparse import ArgumentParser, Namespace
 from multiprocessing import Process, Queue, set_start_method
+import copy
+import time
 
 
 import torch
@@ -10,25 +12,28 @@ from torch.utils.data import DataLoader, Subset, random_split
 
 from utils.client import Client
 from utils.server import Server
-from utils.funcs import Config
+from utils.configs import Config
+from utils.tasks import Task, TaskFashionMNIST, UniTask
 
 def single_simulation(configs: Config):
-    simulator = __SingleSimulator(configs)
-    simulator.start()
+    ssimulator = __SingleSimulator(configs)
+    ssimulator.start()
 
 class __SingleSimulator:
     def __init__(self, configs: Config) -> None:
         self.configs = configs
 
-        self.server = Server(self.configs)
-        self.clients: list[Client] = []
+        server_task = UniTask(self.configs, -1).get_task()
+        self.server = Server(self.configs, server_task)
+        self.clients = [ Client(UniTask(self.configs, i).get_task())
+            for i in range(self.configs.client_num)]
 
     def start(self):
-        self.configure_clients()
 
         result_file = self.configs.result_dir + \
-            "/result" + str(self.configs.simulation_num)
+            "/result" + str(self.configs.simulation_index)
         f = open(result_file, "a")
+        # print("writing to file: %s, simu num: %d" % (result_file, self.configs.simulation_index))
         args = "{:12} {:11} {:10} {:10} {:11} {:12} {:4}".format(
             self.configs.task_name, self.configs.g_epoch_num, 
             self.configs.client_num, self.configs.l_data_num, 
@@ -39,67 +44,27 @@ class __SingleSimulator:
         f.flush()
 
         for i in range(self.configs.g_epoch_num):
-            self.server.distribute_model()
+            self.server.distribute_model(self.clients)
             for client in self.clients:
                 client.train_model()
-            self.server.aggregate_model()
+            self.server.aggregate_model(self.clients)
 
+            if self.configs.verbosity >=3:
+                g_accu = self.server.test_model()
+                print("accuracy %f in simulation %d at global epoch %d" %
+                    (g_accu, self.configs.simulation_index, i))
+            # record result
             if i % 10 == 9:
                 g_accu = self.server.test_model()
+                if self.configs.verbosity >=2:
+                    print("accuracy %f in simulation %d at global epoch %d" %
+                        (g_accu, self.configs.simulation_index, i))
                 f.write("{:.2f} ".format(g_accu))
                 f.flush()
 
-    def configure_clients(self):
-        
-        clients:'list[Client]' = []
+        f.write("\n")
+        f.close()
 
-    def get_partitioned_datasets(self,
-        task: str,
-        client_num: int,
-        data_num: int,
-        batch_size: int,
-        data_path: str) \
-        -> 'list[Subset]':
-
-        if task == "FashionMNIST":
-            train_dataset = datasets.FashionMNIST(
-                root=data_path,
-                train=True,
-                download=True,
-                transform=ToTensor(),
-                )
-        # elif task == "SpeechCommand":
-            # train_dataset = SubsetSC("training", data_path)
-        # elif task == "AG_NEWS":
-            # train_iter = AG_NEWS(split="train")
-            # train_dataset = to_map_style_dataset(train_iter)
-
-        dataset_size = len(train_dataset)
-        # subset division
-        if data_num * client_num > dataset_size:
-            raise "No enough data!"
-        data_num_total = data_num*client_num
-        subset = random_split(train_dataset, [data_num_total, len(train_dataset)-data_num_total])[0]
-        subset_lens = [ data_num for j in range(client_num) ]
-        subsets = random_split(subset, subset_lens)
-        
-        return subsets
-
-    def get_test_dataset(self, task: str, data_path: str) -> Subset:
-        if task == "FashionMNIST":
-            test_dataset = datasets.FashionMNIST(
-                root=data_path,
-                train=False,
-                download=True,
-                transform=ToTensor()
-                )
-        # elif task == "SpeechCommand":
-        #     test_dataset = SubsetSC("testing", data_path)
-        # elif task == "AG_NEWS":
-        #     test_iter = AG_NEWS(split="test")
-        #     test_dataset = to_map_style_dataset(test_iter)
-
-        return test_dataset
 
 class Simulator:
 
@@ -125,7 +90,6 @@ class Simulator:
         return ap
 
     def __init__(self) -> None:
-        self.supported_tasks = ["FashionMNIST", "SpeechCommand", "AG_NEWS"]
         self.configs: Config = None
         
         # self.parse_args()
@@ -141,12 +105,11 @@ class Simulator:
                 ))
 
         set_start_method("spawn")
-        procs = []
+        procs: list[Process] = []
+        que = Queue(self.configs.client_num)
         for i in range(self.configs.simulation_num):
             self.configs.simulation_index = i
-            proc = Process(
-                    target=single_simulation,
-                    args=(self.configs, ))
+            proc = Process(target=single_simulation, args=(self.configs,))
             proc.start()
             procs.append(proc)
 
@@ -154,7 +117,7 @@ class Simulator:
             proc.join()
 
     def get_configs(self):
-        ap = self.__get_argument_parser()
+        ap = Simulator.__get_argument_parser()
         args = ap.parse_args()
 
         task_name: str = args.task_name # limited: FashionMNIST/SpeechCommand/
@@ -178,17 +141,50 @@ class Simulator:
         self.configs = Config(task_name, g_epoch_num, client_num,
             l_data_num, l_epoch_num, l_batch_size, l_lr, datapath,
             device, result_dir, verbosity, simulation_num)
-        self.check_device()
 
-    def check_device(self) -> bool:
-        if self.configs.device == torch.device("cpu"):
-            return True
-        elif self.configs.device == torch.device("cuda"):
+    def check_configs(self) -> bool:
+        # device check
+        if self.configs.device == torch.device("cuda"):
             real_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            if self.configs.device == real_device:
-                return True
-            else:
+            if self.configs.device != real_device:
                 raise "Error: cuda wanted but not equipped."
-        else:
+        elif self.configs.device != torch.device("cpu"):
             raise "Error: target device is not cpu nor cuda, unspported"
 
+        if self.configs.task_name not in UniTask.supported_tasks:
+            raise "Task not supported yet."
+
+
+
+        # elif task == "SpeechCommand":
+            # train_dataset = SubsetSC("training", data_path)
+        # elif task == "AG_NEWS":
+            # train_iter = AG_NEWS(split="train")
+            # train_dataset = to_map_style_dataset(train_iter)
+
+        # dataset_size = len(train_dataset)
+        # # subset division
+        # if data_num * client_num > dataset_size:
+        #     raise "No enough data!"
+        # data_num_total = data_num*client_num
+        # subset = random_split(train_dataset, [data_num_total, len(train_dataset)-data_num_total])[0]
+        # subset_lens = [ data_num for j in range(client_num) ]
+        # subsets = random_split(subset, subset_lens)
+        
+        # return subsets
+
+    # def get_test_dataset(self, task: str, data_path: str) -> Subset:
+    #     if task == "FashionMNIST":
+    #         test_dataset = datasets.FashionMNIST(
+    #             root=data_path,
+    #             train=False,
+    #             download=True,
+    #             transform=ToTensor()
+    #             )
+        # elif task == "SpeechCommand":
+        #     test_dataset = SubsetSC("testing", data_path)
+        # elif task == "AG_NEWS":
+        #     test_iter = AG_NEWS(split="test")
+        #     test_dataset = to_map_style_dataset(test_iter)
+
+        # return test_dataset

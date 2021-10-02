@@ -1,3 +1,3 @@
 TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
 FashionMNIST         100          3      10000           5          256 0.01
-0.34 0.49 0.52 0.54 0.55 0.56 0.57 0.57 0.58 0.58 
+0.41 0.51 0.60 0.61 0.69 0.74 0.76 0.77 0.78 0.80 

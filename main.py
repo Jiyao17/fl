@@ -12,6 +12,8 @@ if __name__ == "__main__":
 
     simulator: Simulator = Simulator()
     simulator.get_configs()
+    simulator.check_configs()
+
 
     simulator.start()
 

@@ -1,6 +1,7 @@
 
 import torch
 
+
 class Config:
     def __init__(self,
         task_name: str,
@@ -34,4 +35,5 @@ class Config:
         self.verbosity:int = verbosity
         self.simulation_num: int = simulation_num
 
+        # for single simulators to know its index
         self.simulation_index:int = simulation_index

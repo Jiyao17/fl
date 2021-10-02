@@ -4,7 +4,7 @@ General multi-model test code for federated learning.
 # Prerequisites
 Sept 29 2021
 
-Python 3.8.10
+Python 3.6.9
 
 Options selected on pytorch official website:
 
@@ -16,3 +16,8 @@ pip install --upgrade pip
 pip3 install torch torchvision torchaudio torchtext
 
 Device allowed: CUDA, cpu
+
+# Usage
+Add new task:
+
+Inherite Task class in task.py, and modify UniTask. Please refer to existing tasks.
