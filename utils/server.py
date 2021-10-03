@@ -2,19 +2,14 @@
 import copy
 
 import torch
-from torch import nn, Tensor
-from torch.utils.data.dataloader import DataLoader
-from torch.utils.data import Dataset
-import torchaudio
 
 from utils.client import Client
 from utils.tasks import Task
-from utils.configs import Config
 
 class Server():
-    def __init__(self, configs: Config, task: Task):
-        self.configs = configs
+    def __init__(self, task: Task):
         self.task = copy.deepcopy(task)
+        self.configs = self.task.configs
 
     def distribute_model(self, clients: 'list[Client]'):
         for client in clients:

@@ -1,11 +1,7 @@
 
-import copy
-
 from torch import nn
-from torch.utils.data import Dataset
 
-from utils.tasks import Task, TaskFashionMNIST
-from utils.configs import Config
+from utils.tasks import Task
 
 class Client():
     def __init__(self, task: Task):

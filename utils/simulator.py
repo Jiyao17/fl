@@ -1,19 +1,15 @@
 
-from argparse import ArgumentParser, Namespace
-from multiprocessing import Process, Queue, set_start_method
+from argparse import ArgumentParser
+from multiprocessing import Process, set_start_method
 import copy
-import time
 
 
 import torch
-from torchvision import datasets
-from torchvision.transforms import ToTensor
-from torch.utils.data import DataLoader, Subset, random_split
 
 from utils.client import Client
 from utils.server import Server
 from utils.configs import Config
-from utils.tasks import Task, TaskFashionMNIST, UniTask
+from utils.tasks import UniTask
 
 def single_simulation(configs: Config):
     ssimulator = __SingleSimulator(configs)
@@ -22,18 +18,25 @@ def single_simulation(configs: Config):
 class __SingleSimulator:
     def __init__(self, configs: Config) -> None:
         self.configs = configs
-
-        server_task = UniTask(self.configs, -1).get_task()
-        self.server = Server(self.configs, server_task)
-        self.clients = [ Client(UniTask(self.configs, i).get_task())
-            for i in range(self.configs.client_num)]
+        # set server
+        self.configs.reside = -1
+        server_task = UniTask(self.configs).get_task()
+        self.server = Server(server_task)
+        # set clients
+        self.clients: list[Client] = []
+        for i in range(self.configs.client_num):
+            new_configs = copy.deepcopy(self.configs)
+            new_configs.reside = i
+            # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
+            self.clients.append(Client(UniTask(new_configs).get_task()))
 
     def start(self):
 
         result_file = self.configs.result_dir + \
             "/result" + str(self.configs.simulation_index)
         f = open(result_file, "a")
-        # print("writing to file: %s, simu num: %d" % (result_file, self.configs.simulation_index))
+        if self.configs.verbosity >= 3:
+            print("writing to file: %s, simu num: %d" % (result_file, self.configs.simulation_index))
         args = "{:12} {:11} {:10} {:10} {:11} {:12} {:4}".format(
             self.configs.task_name, self.configs.g_epoch_num, 
             self.configs.client_num, self.configs.l_data_num, 
@@ -49,19 +52,23 @@ class __SingleSimulator:
                 client.train_model()
             self.server.aggregate_model(self.clients)
 
+            # record result
             if self.configs.verbosity >=3:
                 g_accu = self.server.test_model()
                 print("accuracy %f in simulation %d at global epoch %d" %
                     (g_accu, self.configs.simulation_index, i))
-            # record result
+            elif self.configs.verbosity >=1:
+                if i % 10 == 9:
+                    g_accu = self.server.test_model()
+                    if self.configs.verbosity >=2:
+                        print("accuracy %f in simulation %d at global epoch %d" %
+                            (g_accu, self.configs.simulation_index, i))
+            
             if i % 10 == 9:
-                g_accu = self.server.test_model()
-                if self.configs.verbosity >=2:
-                    print("accuracy %f in simulation %d at global epoch %d" %
-                        (g_accu, self.configs.simulation_index, i))
                 f.write("{:.2f} ".format(g_accu))
                 f.flush()
 
+        # finished
         f.write("\n")
         f.close()
 
@@ -80,7 +87,7 @@ class Simulator:
         ap.add_argument("l_batch_size", type=int)
         ap.add_argument("l_lr", type=float)
         # optional
-        ap.add_argument("-p", "--datapath", type=str, default="/home/tuo28237/projects/fledge/data/")
+        ap.add_argument("-p", "--datapath", type=str, default="/home/tuo28237/projects/fl/data/")
         ap.add_argument("-d", "--device", type=str, default="cpu")
         ap.add_argument("-r", "--result_dir", type=str, default="./result")
         ap.add_argument("-v", "--verbosity", type=int,default=1)
@@ -91,8 +98,6 @@ class Simulator:
 
     def __init__(self) -> None:
         self.configs: Config = None
-        
-        # self.parse_args()
 
     def start(self):
         if self.configs.verbosity >= 2:
@@ -106,7 +111,6 @@ class Simulator:
 
         set_start_method("spawn")
         procs: list[Process] = []
-        que = Queue(self.configs.client_num)
         for i in range(self.configs.simulation_num):
             self.configs.simulation_index = i
             proc = Process(target=single_simulation, args=(self.configs,))

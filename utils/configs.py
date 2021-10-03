@@ -16,6 +16,7 @@ class Config:
         result_dir: str,
         verbosity: int,
         simulation_num: int,
+        reside: int=0,
         simulation_index: int=None,
         ) -> None:
 
@@ -34,6 +35,8 @@ class Config:
         self.result_dir: str = result_dir
         self.verbosity:int = verbosity
         self.simulation_num: int = simulation_num
-
+        # task reside on server (-1) or client (0, 1, ..., client_num-1)
+        self.reside:int = reside
         # for single simulators to know its index
         self.simulation_index:int = simulation_index
+
