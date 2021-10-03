@@ -24,14 +24,6 @@ class Task:
     trainset: Dataset = None
     trainset_perm: 'list[int]' = None
 
-    @staticmethod
-    @overload
-    def get_dataset(configs: Config):
-        """
-        Initialize static members
-        """
-        pass
-
 
     def __init__(self, configs: Config):
         self.configs = configs
@@ -41,34 +33,12 @@ class Task:
         self.optimizer: Optimizer = None
         self.scheduler = None
 
-    def get_dataloader(self):
-        self.testset = TaskFashionMNIST.testset
-        self.test_dataloader = DataLoader(
-            self.testset,
-            batch_size=self.configs.l_batch_size,
-            shuffle=False,
-            drop_last=True
-        )
-
-        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
-            data_num = self.configs.l_data_num
-            reside = self.configs.reside
-            self.trainset = Subset(TaskFashionMNIST.trainset,
-                TaskFashionMNIST.trainset_perm[data_num*reside: data_num*(reside+1)])
-        self.train_dataloader = DataLoader(
-                self.trainset,
-                batch_size=self.configs.l_batch_size,
-                shuffle=True,
-                drop_last=True
-                )
-
-        if self.configs.verbosity >= 3:
-            if self.configs.reside == -1:
-                print("Test set length in simulation %d: %d" %
-                    (self.configs.simulation_index, len(self.testset)))
-            else:
-                print("Dataset length in simulation %d: %d, %d-%d" %
-                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
+    @overload
+    def get_dataloader(configs: Config):
+        """
+        Initialize static members
+        """
+        pass
 
     @overload
     def train(self) -> float:
@@ -94,34 +64,61 @@ class Task:
 
 class TaskFashionMNIST(Task):
 
-    @staticmethod
-    def get_dataset(configs: Config):
+    def get_dataloader(self):
         # if dataset not loaded, load first
         if Task.testset == None:
             Task.testset = datasets.FashionMNIST(
-                root=configs.datapath,
+                root=self.configs.datapath,
                 train=False,
                 download=True,
                 transform=transforms.ToTensor(),
                 )
         if Task.trainset == None:
             Task.trainset = datasets.FashionMNIST(
-                root=configs.datapath,
+                root=self.configs.datapath,
                 train=True,
                 download=True,
                 transform=transforms.ToTensor(),
                 )
         if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(TaskFashionMNIST.trainset)).tolist()
+            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
+
+
+        self.testset = Task.testset
+        self.test_dataloader = DataLoader(
+            self.testset,
+            batch_size=self.configs.l_batch_size,
+            shuffle=False,
+            drop_last=True
+        )
+
+        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+            data_num = self.configs.l_data_num
+            reside = self.configs.reside
+            self.trainset = Subset(Task.trainset,
+                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+        self.train_dataloader = DataLoader(
+                self.trainset,
+                batch_size=self.configs.l_batch_size,
+                shuffle=True,
+                drop_last=True
+                )
+
+        if self.configs.verbosity >= 3:
+            if self.configs.reside == -1:
+                print("Test set length in simulation %d: %d" %
+                    (self.configs.simulation_index, len(self.testset)))
+            else:
+                print("Dataset length in simulation %d: %d, %d-%d" %
+                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
+
 
     def __init__(self, configs: Config):
         super().__init__(configs)
 
         self.model = FashionMNIST()
         self.loss_fn = nn.modules.loss.CrossEntropyLoss()
-        self.optimizer = optim.SGD(
-            self.model.parameters(), lr=self.configs.l_lr)
-        TaskFashionMNIST.get_dataset(self.configs)
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.configs.l_lr)
         self.get_dataloader()
 
     def train(self) -> float:
@@ -256,6 +253,39 @@ class TaskSpeechCommand(Task):
             self.model.parameters(), lr=self.configs.l_lr)
         TaskSpeechCommand.get_dataset(self.configs)
         self.get_dataloader()
+
+        if self.configs.device == "cuda":
+            num_workers = 1
+            pin_memory = True
+        else:
+            num_workers = 0
+            pin_memory = False
+
+        self.dataloader = DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            collate_fn=collate_fn,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            drop_last=True
+            )
+        waveform, sample_rate, label, speaker_id, utterance_number = self.train_dataset[0]
+        labels = sorted(list(set(datapoint[2] for datapoint in self.train_dataset)))
+        set_LABELS(labels)
+        new_sample_rate = 8000
+        transform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+        transformed: Resample = transform(waveform)
+        self.transform = transform.to(self.device)
+        self.loss_fn = F.nll_loss
+        self.model = SpeechCommand_M5(
+            n_input=transformed.shape[0],
+            n_output=len(labels)
+            )
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0001)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
+
+
 
 
 
