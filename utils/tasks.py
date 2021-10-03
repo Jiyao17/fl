@@ -1,4 +1,3 @@
-
 from typing import overload
 import copy
 import os
@@ -6,7 +5,7 @@ import os
 import torch
 from torch import nn, optim, Tensor
 from torch.optim.optimizer import Optimizer
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
 from torchvision import datasets, transforms
 from torch import randperm
@@ -24,12 +23,12 @@ class Task:
     trainset: Dataset = None
     trainset_perm: 'list[int]' = None
 
-
     def __init__(self, configs: Config):
         self.configs = configs
 
         self.model: nn.Module = None
-        self.dataloader: DataLoader = None
+        self.train_dataloader: DataLoader = None
+        self.test_dataloader: DataLoader = None
         self.optimizer: Optimizer = None
         self.scheduler = None
 
@@ -151,10 +150,113 @@ class TaskFashionMNIST(Task):
 
         return correct
 
-
 class TaskSpeechCommand(Task):
 
     labels = None
+
+    class SubsetSC(SPEECHCOMMANDS):
+        def __init__(self, subset, data_path):
+            super().__init__(root=data_path, download=True)
+
+            def load_list(filename):
+                filepath = os.path.join(self._path, filename)
+                with open(filepath) as fileobj:
+                    return [os.path.join(self._path, line.strip()) for line in fileobj]
+
+            if subset == "validation":
+                self._walker = load_list("validation_list.txt")
+            elif subset == "testing":
+                self._walker = load_list("testing_list.txt")
+            elif subset == "training":
+                excludes = load_list("validation_list.txt") + load_list("testing_list.txt")
+                excludes = set(excludes)
+                self._walker = [w for w in self._walker if w not in excludes]
+
+    def get_dataloader(self):
+        # if dataset not loaded, load first
+        if Task.testset == None:
+            Task.testset = datasets.FashionMNIST(
+                root=self.configs.datapath,
+                train=False,
+                download=True,
+                transform=transforms.ToTensor(),
+                )
+        if Task.trainset == None:
+            Task.trainset = datasets.FashionMNIST(
+                root=self.configs.datapath,
+                train=True,
+                download=True,
+                transform=transforms.ToTensor(),
+                )
+        if Task.trainset_perm == None:
+            Task.trainset_perm = randperm(len(TaskFashionMNIST.trainset)).tolist()
+
+        if self.configs.device == "cuda":
+            num_workers = 1
+            pin_memory = True
+        else:
+            num_workers = 0
+            pin_memory = False
+
+        # test dataloader
+        self.testset = Task.testset
+        self.test_dataloader = DataLoader(
+                self.testset,
+                batch_size=self.configs.l_batch_size,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=TaskSpeechCommand.collate_fn,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                )
+        # train dataloader
+        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+            data_num = self.configs.l_data_num
+            reside = self.configs.reside
+            self.trainset = Subset(Task.trainset,
+                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+        self.train_dataloader = DataLoader(
+            self.trainset,
+            batch_size=self.configs.l_batch_size,
+            shuffle=True,
+            collate_fn=TaskSpeechCommand.collate_fn,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            drop_last=True
+            )
+
+        if self.configs.verbosity >= 3:
+            if self.configs.reside == -1:
+                print("Test set length in simulation %d: %d" %
+                    (self.configs.simulation_index, len(self.testset)))
+            else:
+                print("Dataset length in simulation %d: %d, %d-%d" %
+                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
+
+
+
+    def __init__(self, configs: Config):
+        super().__init__(configs)
+
+        self.model = SpeechCommand()
+        self.loss_fn = nn.modules.loss.CrossEntropyLoss()
+        self.optimizer = optim.SGD(
+            self.model.parameters(), lr=self.configs.l_lr)
+        self.get_dataloader()
+
+        waveform, sample_rate, label, speaker_id, utterance_number = self.train_dataset[0]
+        labels = sorted(list(set(datapoint[2] for datapoint in self.train_dataset)))
+        new_sample_rate = 8000
+        transform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+        transformed: Resample = transform(waveform)
+        self.transform = transform.to(self.device)
+        self.loss_fn = F.nll_loss
+        self.model = SpeechCommand_M5(
+            n_input=transformed.shape[0],
+            n_output=len(labels)
+            )
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0001)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
 
     @staticmethod
     def label_to_index(word):
@@ -205,87 +307,6 @@ class TaskSpeechCommand(Task):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    class SubsetSC(SPEECHCOMMANDS):
-        def __init__(self, subset, data_path):
-            super().__init__(root=data_path, download=True)
-
-            def load_list(filename):
-                filepath = os.path.join(self._path, filename)
-                with open(filepath) as fileobj:
-                    return [os.path.join(self._path, line.strip()) for line in fileobj]
-
-            if subset == "validation":
-                self._walker = load_list("validation_list.txt")
-            elif subset == "testing":
-                self._walker = load_list("testing_list.txt")
-            elif subset == "training":
-                excludes = load_list("validation_list.txt") + load_list("testing_list.txt")
-                excludes = set(excludes)
-                self._walker = [w for w in self._walker if w not in excludes]
-
-
-    @staticmethod
-    def get_dataset(configs: Config):
-        # if dataset not loaded, load first
-        if Task.testset == None:
-            Task.testset = datasets.FashionMNIST(
-                root=configs.datapath,
-                train=False,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
-        if Task.trainset == None:
-            Task.trainset = datasets.FashionMNIST(
-                root=configs.datapath,
-                train=True,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
-        if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(TaskFashionMNIST.trainset)).tolist()
-
-    def __init__(self, configs: Config):
-        super().__init__(configs)
-
-        self.model = SpeechCommand()
-        self.loss_fn = nn.modules.loss.CrossEntropyLoss()
-        self.optimizer = optim.SGD(
-            self.model.parameters(), lr=self.configs.l_lr)
-        TaskSpeechCommand.get_dataset(self.configs)
-        self.get_dataloader()
-
-        if self.configs.device == "cuda":
-            num_workers = 1
-            pin_memory = True
-        else:
-            num_workers = 0
-            pin_memory = False
-
-        self.dataloader = DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            collate_fn=collate_fn,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            drop_last=True
-            )
-        waveform, sample_rate, label, speaker_id, utterance_number = self.train_dataset[0]
-        labels = sorted(list(set(datapoint[2] for datapoint in self.train_dataset)))
-        set_LABELS(labels)
-        new_sample_rate = 8000
-        transform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
-        transformed: Resample = transform(waveform)
-        self.transform = transform.to(self.device)
-        self.loss_fn = F.nll_loss
-        self.model = SpeechCommand_M5(
-            n_input=transformed.shape[0],
-            n_output=len(labels)
-            )
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0001)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
-
-
 
 
 
@@ -306,7 +327,7 @@ class UniTask:
         if self.configs.task_name == "FashionMNIST":
             self.task = TaskFashionMNIST(self.configs)
         if self.configs.task_name == "SpeechCommand":
-            self.task = SpeechCommand(self.configs)
+            self.task = TaskSpeechCommand(self.configs)
 
     def get_task(self) -> Task:
         return self.task
