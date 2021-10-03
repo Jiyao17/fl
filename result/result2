@@ -16,4 +16,10 @@ FashionMNIST         100          6      10000           5           64 0.01
 0.55 0.70 0.73 0.75 0.76 0.77 0.77 0.77 0.78 0.78 
 TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
 FashionMNIST         100          6      10000           5           64 0.01
-0.60 
+0.60 TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
+FashionMNIST         100          3      10000           5          256 0.01
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
+SpeechCommand         100          3      20000           5           64 0.01
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR
+SpeechCommand         100          3      20000           5           64 0.01
+0.09 

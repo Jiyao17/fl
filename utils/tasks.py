@@ -1,6 +1,7 @@
 from typing import overload
 import copy
 import os
+from numpy.lib.function_base import select
 
 import torch
 from torch import nn, optim, Tensor
@@ -114,7 +115,6 @@ class TaskFashionMNIST(Task):
                 print("Dataset length in simulation %d: %d, %d-%d" %
                     (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
 
-
     def __init__(self, configs: Config):
         super().__init__(configs)
 
@@ -130,6 +130,7 @@ class TaskFashionMNIST(Task):
         for X, y in self.train_dataloader:
             # Compute prediction and loss
             pred = self.model(X.to(self.configs.device))
+            print(y.shape)
             loss = self.loss_fn(pred, y.to(self.configs.device))
             # Backpropagation
             self.optimizer.zero_grad()
@@ -155,7 +156,10 @@ class TaskFashionMNIST(Task):
 
 class TaskSpeechCommand(Task):
 
-    labels: list = None
+    labels: list = ['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow',
+        'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off',
+        'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 
+        'visual', 'wow', 'yes', 'zero']
 
     class SubsetSC(SPEECHCOMMANDS):
         def __init__(self, subset, data_path):
@@ -182,9 +186,14 @@ class TaskSpeechCommand(Task):
         if Task.trainset == None:
             Task.trainset = TaskSpeechCommand.SubsetSC("training", self.configs.datapath)
         if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(TaskFashionMNIST.trainset)).tolist()
-
-        if self.configs.device == "cuda":
+            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
+        # if TaskSpeechCommand.labels == None:
+        #     TaskSpeechCommand.labels = sorted(
+        #         list(set(datapoint[2] for datapoint in Task.trainset)))
+        #     print(type(TaskSpeechCommand.labels))
+        #     print(TaskSpeechCommand.labels)
+            
+        if self.configs.device == torch.device("cuda"):
             num_workers = 1
             pin_memory = True
         else:
@@ -230,24 +239,25 @@ class TaskSpeechCommand(Task):
         super().__init__(configs)
 
         self.model = SpeechCommand()
-        self.loss_fn = nn.modules.loss.CrossEntropyLoss()
+        self.loss_fn = F.nll_loss
         self.optimizer = optim.SGD(
             self.model.parameters(), lr=self.configs.l_lr)
         self.get_dataloader()
 
         waveform, sample_rate, label, speaker_id, utterance_number = self.trainset[0]
-        TaskSpeechCommand.labels = sorted(list(set(datapoint[2] for datapoint in self.trainset)))
         new_sample_rate = 8000
         transform = Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
         # transformed: Resample = transform(waveform)
         self.transform = transform.to(self.configs.device)
-        self.loss_fn = F.nll_loss
+        
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.configs.l_lr, weight_decay=0.0001)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
 
     def train(self):
+        self.model.to(self.configs.device)
+        self.model.train()
         self.transform = self.transform.to(self.configs.device)
-        for (data, target) in self.train_dataloader:
+        for data, target in self.train_dataloader:
             data = data.to(self.configs.device)
             target = target.to(self.configs.device)
             # apply transform and model on whole batch directly on device
@@ -262,6 +272,9 @@ class TaskSpeechCommand(Task):
             self.scheduler.step()
 
     def test(self):
+        self.model.to(self.configs.device)
+        self.model.eval()
+
         dataset_size = len(self.test_dataloader.dataset)
         correct = 0
         for data, target in self.test_dataloader:
@@ -307,10 +320,10 @@ class TaskSpeechCommand(Task):
             targets += [TaskSpeechCommand.label_to_index(label)]
 
         # Group the list of tensors into a batched tensor
-            tensors = TaskSpeechCommand.pad_sequence(tensors)
-            targets = torch.stack(targets)
+        tensors = TaskSpeechCommand.pad_sequence(tensors)
+        targets = torch.stack(targets)
 
-            return tensors, targets
+        return tensors, targets
 
     @staticmethod
     def number_of_correct(pred, target):
@@ -325,7 +338,6 @@ class TaskSpeechCommand(Task):
     @staticmethod
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
 
 class UniTask:
     """

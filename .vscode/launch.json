@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "/home/tuo28237/projects/fl/main.py",
             "console": "integratedTerminal",
-            "args": ["FashionMNIST", "100", "3", "10000", "5", "256", "0.01", "-d", "cuda", "-n", "3", "-v", "2"],
+            "args": ["SpeechCommand", "100", "1", "10000", "5", "64", "0.01", "-d", "cuda", "-n", "1", "-v", "2"],
 
         }
     ]
