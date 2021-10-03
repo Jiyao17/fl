@@ -149,7 +149,7 @@ class TaskFashionMNIST(Task):
             pred = self.model(X.to(self.configs.device))
             # test_loss += loss_fn(pred, y.to(self.device)).item()
             correct += (pred.argmax(1) == y.to(self.configs.device)).type(torch.float).sum().item()
-        correct /= size
+        correct /= 1.0*size
 
         return correct
 
@@ -178,19 +178,9 @@ class TaskSpeechCommand(Task):
     def get_dataloader(self):
         # if dataset not loaded, load first
         if Task.testset == None:
-            Task.testset = datasets.FashionMNIST(
-                root=self.configs.datapath,
-                train=False,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
+            Task.testset = TaskSpeechCommand.SubsetSC("testing", self.configs.datapath)
         if Task.trainset == None:
-            Task.trainset = datasets.FashionMNIST(
-                root=self.configs.datapath,
-                train=True,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
+            Task.trainset = TaskSpeechCommand.SubsetSC("training", self.configs.datapath)
         if Task.trainset_perm == None:
             Task.trainset_perm = randperm(len(TaskFashionMNIST.trainset)).tolist()
 
@@ -252,8 +242,40 @@ class TaskSpeechCommand(Task):
         # transformed: Resample = transform(waveform)
         self.transform = transform.to(self.configs.device)
         self.loss_fn = F.nll_loss
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0001)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.configs.l_lr, weight_decay=0.0001)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
+
+    def train(self):
+        self.transform = self.transform.to(self.configs.device)
+        for (data, target) in self.train_dataloader:
+            data = data.to(self.configs.device)
+            target = target.to(self.configs.device)
+            # apply transform and model on whole batch directly on device
+            data = self.transform(data)
+            output = self.model(data)
+            # negative log-likelihood for a tensor of size (batch x 1 x n_output)
+            loss = self.loss_fn(output.squeeze(), target)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            self.scheduler.step()
+
+    def test(self):
+        dataset_size = len(self.test_dataloader.dataset)
+        correct = 0
+        for data, target in self.test_dataloader:
+            data = data.to(self.configs.device)
+            target = target.to(self.configs.device)
+            # apply transform and model on whole batch directly on device
+            data = self.transform(data)
+            output = self.model(data)
+
+            pred = TaskSpeechCommand.get_likely_index(output)
+            # pred = output.argmax(dim=-1)
+            correct += TaskSpeechCommand.number_of_correct(pred, target)
+
+        return 1.0 * correct / dataset_size
 
     @staticmethod
     def label_to_index(word):
@@ -303,9 +325,6 @@ class TaskSpeechCommand(Task):
     @staticmethod
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-
 
 
 class UniTask:
