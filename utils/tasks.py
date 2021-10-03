@@ -269,7 +269,7 @@ class TaskSpeechCommand(Task):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            self.scheduler.step()
+            # self.scheduler.step()
 
     def test(self):
         self.model.to(self.configs.device)
