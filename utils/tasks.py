@@ -9,7 +9,10 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
 from torchvision import datasets, transforms
 from torch import randperm
+# SpeechCommand
 from torchaudio.datasets import SPEECHCOMMANDS
+from torchaudio.transforms import Resample
+import torch.nn.functional as F
 
 from utils.configs import Config
 from utils.models import FashionMNIST, SpeechCommand, AG_NEWS
@@ -152,7 +155,7 @@ class TaskFashionMNIST(Task):
 
 class TaskSpeechCommand(Task):
 
-    labels = None
+    labels: list = None
 
     class SubsetSC(SPEECHCOMMANDS):
         def __init__(self, subset, data_path):
@@ -233,8 +236,6 @@ class TaskSpeechCommand(Task):
                 print("Dataset length in simulation %d: %d, %d-%d" %
                     (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
 
-
-
     def __init__(self, configs: Config):
         super().__init__(configs)
 
@@ -244,30 +245,26 @@ class TaskSpeechCommand(Task):
             self.model.parameters(), lr=self.configs.l_lr)
         self.get_dataloader()
 
-        waveform, sample_rate, label, speaker_id, utterance_number = self.train_dataset[0]
-        labels = sorted(list(set(datapoint[2] for datapoint in self.train_dataset)))
+        waveform, sample_rate, label, speaker_id, utterance_number = self.trainset[0]
+        TaskSpeechCommand.labels = sorted(list(set(datapoint[2] for datapoint in self.trainset)))
         new_sample_rate = 8000
-        transform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
-        transformed: Resample = transform(waveform)
-        self.transform = transform.to(self.device)
+        transform = Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+        # transformed: Resample = transform(waveform)
+        self.transform = transform.to(self.configs.device)
         self.loss_fn = F.nll_loss
-        self.model = SpeechCommand_M5(
-            n_input=transformed.shape[0],
-            n_output=len(labels)
-            )
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0001)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
 
     @staticmethod
     def label_to_index(word):
         # Return the position of the word in labels
-        return torch.tensor(SpeechCommand.labels.index(word))
+        return torch.tensor(TaskSpeechCommand.labels.index(word))
 
     @staticmethod
     def index_to_label(index):
         # Return the word corresponding to the index in labels
         # This is the inverse of label_to_index
-        return SpeechCommand.labels[index]
+        return TaskSpeechCommand.labels[index]
 
     @staticmethod    
     def pad_sequence(batch):
@@ -285,10 +282,10 @@ class TaskSpeechCommand(Task):
         # Gather in lists, and encode labels as indices
         for waveform, _, label, *_ in batch:
             tensors += [waveform]
-            targets += [SpeechCommand.label_to_index(label)]
+            targets += [TaskSpeechCommand.label_to_index(label)]
 
         # Group the list of tensors into a batched tensor
-            tensors = SpeechCommand.pad_sequence(tensors)
+            tensors = TaskSpeechCommand.pad_sequence(tensors)
             targets = torch.stack(targets)
 
             return tensors, targets
