@@ -14,6 +14,7 @@ from torch import randperm
 from torchaudio.datasets import SPEECHCOMMANDS
 from torchaudio.transforms import Resample
 import torch.nn.functional as F
+# AG_NEWS
 
 from utils.configs import Config
 from utils.models import FashionMNIST, SpeechCommand, AG_NEWS
@@ -153,6 +154,7 @@ class TaskFashionMNIST(Task):
         correct /= 1.0*size
 
         return correct
+
 
 class TaskSpeechCommand(Task):
 
@@ -339,12 +341,62 @@ class TaskSpeechCommand(Task):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+
+class TaskAGNEWS(Task):
+    def __init__(self, configs: Config):
+        super().__init__(configs)
+
+    def train(self) -> float:
+        return super().train()
+    
+    def test(self) -> float:
+        return super().test()
+
+    def get_dataloader(self, configs: Config):
+        if Task.testset == None:
+            Task.testset = None
+        if Task.trainset == None:
+            Task.trainset = None
+        if Task.trainset_perm == None:
+            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
+
+
+        self.testset = Task.testset
+        self.test_dataloader = DataLoader(
+            self.testset,
+            batch_size=self.configs.l_batch_size,
+            shuffle=False,
+            drop_last=True
+        )
+
+        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+            data_num = self.configs.l_data_num
+            reside = self.configs.reside
+            self.trainset = Subset(Task.trainset,
+                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+        self.train_dataloader = DataLoader(
+                self.trainset,
+                batch_size=self.configs.l_batch_size,
+                shuffle=True,
+                drop_last=True
+                )
+
+        if self.configs.verbosity >= 3:
+            if self.configs.reside == -1:
+                print("Test set length in simulation %d: %d" %
+                    (self.configs.simulation_index, len(self.testset)))
+            else:
+                print("Dataset length in simulation %d: %d, %d-%d" %
+                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
+
+
+
 class UniTask:
     """
     Use UniTask().get_task() to get correct task type
     """
     #  "AG_NEWS"
-    supported_tasks = ["FashionMNIST", "SpeechCommand",]
+    supported_tasks = ["FashionMNIST", "SpeechCommand", "AG_NEWS"]
 
     def __init__(self, configs: Config) -> None:
         self.configs = copy.deepcopy(configs)
@@ -356,6 +408,8 @@ class UniTask:
             self.task = TaskFashionMNIST(self.configs)
         if self.configs.task_name == "SpeechCommand":
             self.task = TaskSpeechCommand(self.configs)
+        if self.configs.task_name == "AG_NEWS":
+            self.task = TaskAGNEWS(self.configs)
 
     def get_task(self) -> Task:
         return self.task
