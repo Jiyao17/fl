@@ -108,7 +108,7 @@ class SpeechCommand(nn.Module):
         return F.log_softmax(x, dim=2)
 
 
-class AG_NEWS(nn.Module):
+class AGNEWS(nn.Module):
     def __init__(self, vocab_size = 95811, embed_dim = 64, num_class = 4):
         super().__init__()
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=True)

@@ -15,9 +15,13 @@ from torchaudio.datasets import SPEECHCOMMANDS
 from torchaudio.transforms import Resample
 import torch.nn.functional as F
 # AG_NEWS
+from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import build_vocab_from_iterator
+from torchtext.datasets import AG_NEWS 
+from torchtext.data.functional import to_map_style_dataset
 
 from utils.configs import Config
-from utils.models import FashionMNIST, SpeechCommand, AG_NEWS
+from utils.models import FashionMNIST, SpeechCommand, AGNEWS
 
 
 class Task:
@@ -38,7 +42,7 @@ class Task:
         self.scheduler = None
 
     @overload
-    def get_dataloader(configs: Config):
+    def get_dataloader(self):
         """
         Initialize static members
         """
@@ -346,28 +350,34 @@ class TaskAGNEWS(Task):
     def __init__(self, configs: Config):
         super().__init__(configs)
 
-    def train(self) -> float:
-        return super().train()
-    
-    def test(self) -> float:
-        return super().test()
+        self.tokenizer = get_tokenizer('basic_english')
+        self.train_iter = AG_NEWS(split='train')
+        self.vocab = build_vocab_from_iterator(self.yield_tokens(self.train_iter), specials=["<unk>"])
+        self.vocab.set_default_index(self.vocab["<unk>"])
+        self.text_pipeline = lambda x: self.vocab(self.tokenizer(x))
+        self.label_pipeline = lambda x: int(x) - 1
 
-    def get_dataloader(self, configs: Config):
+        self.model = AGNEWS()
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.configs.l_lr)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 1.0, gamma=0.1)
+
+    def get_dataloader(self):
         if Task.testset == None:
-            Task.testset = None
+            test_iter = AG_NEWS(split="test")
+            Task.testset = to_map_style_dataset(test_iter)   
         if Task.trainset == None:
-            Task.trainset = None
+            train_iter = AG_NEWS(split="train")
+            Task.trainset = to_map_style_dataset(train_iter)
         if Task.trainset_perm == None:
             Task.trainset_perm = randperm(len(Task.trainset)).tolist()
-
 
         self.testset = Task.testset
         self.test_dataloader = DataLoader(
             self.testset,
             batch_size=self.configs.l_batch_size,
-            shuffle=False,
-            drop_last=True
-        )
+            shuffle=True, 
+            collate_fn=self.collate_batch)
 
         if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
             data_num = self.configs.l_data_num
@@ -375,11 +385,11 @@ class TaskAGNEWS(Task):
             self.trainset = Subset(Task.trainset,
                 Task.trainset_perm[data_num*reside: data_num*(reside+1)])
         self.train_dataloader = DataLoader(
-                self.trainset,
-                batch_size=self.configs.l_batch_size,
-                shuffle=True,
-                drop_last=True
-                )
+            self.trainset, 
+            batch_size=self.configs.l_batch_size, 
+            shuffle=False, 
+            collate_fn=self.collate_batch)
+
 
         if self.configs.verbosity >= 3:
             if self.configs.reside == -1:
@@ -389,6 +399,57 @@ class TaskAGNEWS(Task):
                 print("Dataset length in simulation %d: %d, %d-%d" %
                     (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
 
+    def train(self) -> float:
+        self.model.to(self.configs.device)
+        self.model.train()
+        total_acc, total_count = 0, 0
+
+        for label, text, offsets in self.train_dataloader:
+            self.optimizer.zero_grad()
+            predicted_label = self.model(text, offsets)
+            loss = self.loss_fn(predicted_label, label)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.1)
+            self.optimizer.step()
+
+            total_acc += (predicted_label.argmax(1) == label).sum().item()
+            total_count += label.size(0)
+        
+        return total_acc/total_count
+
+    def test(self) -> float:
+        self.model.to(self.configs.device)
+        self.model.eval()
+        total_acc, total_count = 0, 0
+
+        with torch.no_grad():
+            for label, text, offsets in self.test_dataloader:
+                predicted_label = self.model(text, offsets)
+                # loss = self.loss_fn(predicted_label, label)
+                total_acc += (predicted_label.argmax(1) == label).sum().item()
+                total_count += label.size(0)
+        return total_acc/total_count
+
+    def yield_tokens(self, data_iter):
+        # return [self.tokenizer(text) for _, text in data_iter]
+        for _, text in data_iter:
+            yield self.tokenizer(text)
+
+    # def transform_to_token(self, data)
+
+    def collate_batch(self, batch):
+        label_list, text_list, offsets = [], [], [0]
+        for (_label, _text) in batch:
+            label_list.append(self.label_pipeline(_label))
+            processed_text = torch.tensor(self.text_pipeline(_text), dtype=torch.int64)
+            text_list.append(processed_text)
+            offsets.append(processed_text.size(0))
+        label_list = torch.tensor(label_list, dtype=torch.int64)
+        offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
+        text_list = torch.cat(text_list)
+
+        device = self.configs.device
+        return label_list.to(device), text_list.to(device), offsets.to(device)
 
 
 class UniTask:
