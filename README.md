@@ -13,6 +13,7 @@ Pytorch1.9.1 Linux Pip Python CUDA10.2
 Command used:
 
 pip install --upgrade pip
+
 pip3 install torch torchvision torchaudio torchtext
 
 Device allowed: CUDA, cpu
@@ -21,3 +22,7 @@ Device allowed: CUDA, cpu
 Add new task:
 
 Inherite Task class in task.py, and modify UniTask. Please refer to existing tasks.
+
+# TODO
+
+Add support for batch configurations
