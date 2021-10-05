@@ -158,37 +158,3 @@ class Simulator:
         if self.configs.task_name not in UniTask.supported_tasks:
             raise "Task not supported yet."
 
-
-
-        # elif task == "SpeechCommand":
-            # train_dataset = SubsetSC("training", data_path)
-        # elif task == "AG_NEWS":
-            # train_iter = AG_NEWS(split="train")
-            # train_dataset = to_map_style_dataset(train_iter)
-
-        # dataset_size = len(train_dataset)
-        # # subset division
-        # if data_num * client_num > dataset_size:
-        #     raise "No enough data!"
-        # data_num_total = data_num*client_num
-        # subset = random_split(train_dataset, [data_num_total, len(train_dataset)-data_num_total])[0]
-        # subset_lens = [ data_num for j in range(client_num) ]
-        # subsets = random_split(subset, subset_lens)
-        
-        # return subsets
-
-    # def get_test_dataset(self, task: str, data_path: str) -> Subset:
-    #     if task == "FashionMNIST":
-    #         test_dataset = datasets.FashionMNIST(
-    #             root=data_path,
-    #             train=False,
-    #             download=True,
-    #             transform=ToTensor()
-    #             )
-        # elif task == "SpeechCommand":
-        #     test_dataset = SubsetSC("testing", data_path)
-        # elif task == "AG_NEWS":
-        #     test_iter = AG_NEWS(split="test")
-        #     test_dataset = to_map_style_dataset(test_iter)
-
-        # return test_dataset
