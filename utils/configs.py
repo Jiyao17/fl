@@ -34,9 +34,11 @@ class Config:
         self.device: torch.device = torch.device(device)
         self.result_dir: str = result_dir
         self.verbosity:int = verbosity
+        # run multiple simulations in processes at one time
         self.simulation_num: int = simulation_num
         # task reside on server (-1) or client (0, 1, ..., client_num-1)
         self.reside:int = reside
         # for single simulators to know its index
+        # so it can write results to its file
         self.simulation_index:int = simulation_index
 

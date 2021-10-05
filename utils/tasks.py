@@ -72,6 +72,14 @@ class Task:
 
 class TaskFashionMNIST(Task):
 
+    def __init__(self, configs: Config):
+        super().__init__(configs)
+
+        self.model = FashionMNIST()
+        self.loss_fn = nn.modules.loss.CrossEntropyLoss()
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.configs.l_lr)
+        self.get_dataloader()
+
     def get_dataloader(self):
         # if dataset not loaded, load first
         if Task.testset == None:
@@ -119,14 +127,6 @@ class TaskFashionMNIST(Task):
             else:
                 print("Dataset length in simulation %d: %d, %d-%d" %
                     (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
-
-    def __init__(self, configs: Config):
-        super().__init__(configs)
-
-        self.model = FashionMNIST()
-        self.loss_fn = nn.modules.loss.CrossEntropyLoss()
-        self.optimizer = optim.SGD(self.model.parameters(), lr=self.configs.l_lr)
-        self.get_dataloader()
 
     def train(self) -> float:
         self.model.to(self.configs.device)
@@ -185,6 +185,24 @@ class TaskSpeechCommand(Task):
                 excludes = set(excludes)
                 self._walker = [w for w in self._walker if w not in excludes]
 
+    def __init__(self, configs: Config):
+        super().__init__(configs)
+
+        self.model = SpeechCommand()
+        self.loss_fn = F.nll_loss
+        self.optimizer = optim.SGD(
+            self.model.parameters(), lr=self.configs.l_lr)
+        self.get_dataloader()
+
+        waveform, sample_rate, label, speaker_id, utterance_number = self.trainset[0]
+        new_sample_rate = 8000
+        transform = Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+        # transformed: Resample = transform(waveform)
+        self.transform = transform.to(self.configs.device)
+        
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.configs.l_lr, weight_decay=0.0001)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
+
     def get_dataloader(self):
         # if dataset not loaded, load first
         if Task.testset == None:
@@ -240,24 +258,6 @@ class TaskSpeechCommand(Task):
             else:
                 print("Dataset length in simulation %d: %d, %d-%d" %
                     (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
-
-    def __init__(self, configs: Config):
-        super().__init__(configs)
-
-        self.model = SpeechCommand()
-        self.loss_fn = F.nll_loss
-        self.optimizer = optim.SGD(
-            self.model.parameters(), lr=self.configs.l_lr)
-        self.get_dataloader()
-
-        waveform, sample_rate, label, speaker_id, utterance_number = self.trainset[0]
-        new_sample_rate = 8000
-        transform = Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
-        # transformed: Resample = transform(waveform)
-        self.transform = transform.to(self.configs.device)
-        
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.configs.l_lr, weight_decay=0.0001)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
 
     def train(self):
         self.model.to(self.configs.device)
@@ -349,9 +349,9 @@ class TaskSpeechCommand(Task):
 class TaskAGNEWS(Task):
     def __init__(self, configs: Config):
         super().__init__(configs)
-
+        self.get_dataloader()
         self.tokenizer = get_tokenizer('basic_english')
-        self.train_iter = AG_NEWS(split='train')
+        self.train_iter = AG_NEWS(root=self.configs.datapath, split='train')
         self.vocab = build_vocab_from_iterator(self.yield_tokens(self.train_iter), specials=["<unk>"])
         self.vocab.set_default_index(self.vocab["<unk>"])
         self.text_pipeline = lambda x: self.vocab(self.tokenizer(x))
@@ -364,10 +364,10 @@ class TaskAGNEWS(Task):
 
     def get_dataloader(self):
         if Task.testset == None:
-            test_iter = AG_NEWS(split="test")
+            test_iter = AG_NEWS(root=self.configs.datapath, split="test")
             Task.testset = to_map_style_dataset(test_iter)   
         if Task.trainset == None:
-            train_iter = AG_NEWS(split="train")
+            train_iter = AG_NEWS(root=self.configs.datapath, split="train")
             Task.trainset = to_map_style_dataset(train_iter)
         if Task.trainset_perm == None:
             Task.trainset_perm = randperm(len(Task.trainset)).tolist()
@@ -435,7 +435,7 @@ class TaskAGNEWS(Task):
         for _, text in data_iter:
             yield self.tokenizer(text)
 
-    # def transform_to_token(self, data)
+        # def transform_to_token(self, data)
 
     def collate_batch(self, batch):
         label_list, text_list, offsets = [], [], [0]

@@ -8,7 +8,8 @@ from utils.tasks import Task
 
 class Server():
     def __init__(self, task: Task):
-        self.task = copy.deepcopy(task)
+        # self.task = copy.deepcopy(task)
+        self.task = task
         self.configs = self.task.configs
 
     def distribute_model(self, clients: 'list[Client]'):
