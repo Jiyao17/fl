@@ -20,8 +20,68 @@ from torchtext.vocab import build_vocab_from_iterator
 from torchtext.datasets import AG_NEWS 
 from torchtext.data.functional import to_map_style_dataset
 
-from utils.configs import Config
 from utils.models import FashionMNIST, SpeechCommand, AGNEWS
+
+
+
+
+class Config:
+    def __init__(self,
+        task_name: str,
+        g_epoch_num: int,
+        client_num: int,
+        l_data_num: int,
+        l_epoch_num: int,
+        l_batch_size: int,
+        l_lr: int,
+        datapath: int,
+        device: int,
+        result_dir: str,
+        verbosity: int,
+        simulation_num: int,
+        reside: int=0,
+        simulation_index: int=None,
+        ) -> None:
+
+        self.task_name: str = task_name
+        # global parameters
+        self.g_epoch_num: int = g_epoch_num
+        # local parameters
+        self.client_num: int = client_num
+        self.l_data_num: int = l_data_num
+        self.l_epoch_num: int = l_epoch_num
+        self.l_batch_size: int = l_batch_size
+        self.l_lr: float = l_lr
+        # shared settings
+        self.datapath: str = datapath
+        self.device: torch.device = torch.device(device)
+        self.result_dir: str = result_dir
+        self.verbosity:int = verbosity
+        # run multiple simulations in processes at one time
+        self.simulation_num: int = simulation_num
+        # task reside on server (-1) or client (0, 1, ..., client_num-1)
+        self.reside:int = reside
+        # for single simulators to know its index
+        # so it can write results to its file
+        self.simulation_index:int = simulation_index
+
+    def __init__(self):
+        if len(UniTask.supported_tasks) < 1:
+            raise "No supported task, cannot run"
+        self.task_name: str = UniTask.supported_tasks[0]
+        self.g_epoch_num: int = 100
+        self.client_num: int = 3
+        self.l_data_num: int = 20000
+        self.l_epoch_num: int = 5
+        self.l_batch_size: int = 64
+        self.l_lr: float = 0.01
+        self.datapath: str = "./data/"
+        self.device: torch.device = torch.device("cuda")
+        self.result_dir: str = "./result/"
+        self.verbosity:int = 2
+        self.simulation_num: int = 1
+        self.reside:int = -1
+        self.simulation_index:int = 0
 
 
 class Task:
@@ -69,6 +129,7 @@ class Task:
         state_dict = copy.deepcopy(new_state_dict)
         self.model.load_state_dict(state_dict)
         self.model.to(self.configs.device)
+
 
 class TaskFashionMNIST(Task):
 
@@ -135,7 +196,7 @@ class TaskFashionMNIST(Task):
         for X, y in self.train_dataloader:
             # Compute prediction and loss
             pred = self.model(X.to(self.configs.device))
-            print(y.shape)
+            # print(y.shape)
             loss = self.loss_fn(pred, y.to(self.configs.device))
             # Backpropagation
             self.optimizer.zero_grad()

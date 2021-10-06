@@ -1,15 +1,13 @@
 
 from argparse import ArgumentParser
-from multiprocessing import Process, set_start_method
 import copy
-
+from multiprocessing import Process
 
 import torch
 
 from utils.client import Client
 from utils.server import Server
-from utils.configs import Config
-from utils.tasks import UniTask
+from utils.tasks import UniTask, Config
 
 def single_simulation(configs: Config):
     ssimulator = __SingleSimulator(configs)
@@ -96,8 +94,11 @@ class Simulator:
 
         return ap
 
-    def __init__(self) -> None:
-        self.configs: Config = None
+    def __init__(self, config: Config = None) -> None:
+        if config == None:
+            self.configs = Config()
+        else:
+            self.configs = copy.deepcopy(config)
 
     def start(self):
         if self.configs.verbosity >= 2:
@@ -109,7 +110,6 @@ class Simulator:
                 self.configs.device, self.configs.result_dir
                 ))
 
-        set_start_method("spawn")
         procs: list[Process] = []
         for i in range(self.configs.simulation_num):
             self.configs.simulation_index = i
@@ -120,7 +120,10 @@ class Simulator:
         for proc in procs:
             proc.join()
 
-    def get_configs(self):
+    def set_configs(self, config: Config):
+        self.configs = copy.deepcopy(config)
+
+    def get_configs_from_cml(self):
         ap = Simulator.__get_argument_parser()
         args = ap.parse_args()
 

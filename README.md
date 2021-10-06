@@ -18,6 +18,12 @@ pip3 install torch torchvision torchaudio torchtext
 
 Device allowed: CUDA, cpu
 
+# Known Issues
+When the dataset is not downloaded, do not run multiple simulation,
+i.e., do not set configs.simulation.simulation_num > 1.
+
+Set configs.simulation.simulation_num = 1 and let it download the dataset. Then restart.
+
 # Usage
 Add new task:
 
