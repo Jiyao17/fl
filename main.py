@@ -20,10 +20,10 @@ if __name__ == "__main__":
     simulator.configs.g_epoch_num = 500
     simulator.configs.simulation_num = 5
 
-    for i in range(1, 12):
-        simulator.configs.client_num = i
+    # for i in range(1, 12):
+    simulator.configs.client_num = 12
         # simulator.check_configs()
-        simulator.start()
+    simulator.start()
 
 
     # print(simulator.configs.l_data_num)
