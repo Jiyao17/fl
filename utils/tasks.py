@@ -214,11 +214,13 @@ class TaskFashionMNIST(Task):
         # with torch.no_grad():
         for X, y in self.test_dataloader:
             pred = self.model(X.to(self.configs.device))
-            # test_loss += loss_fn(pred, y.to(self.device)).item()
+            test_loss += self.loss_fn(pred, y.to(self.device)).item()
             correct += (pred.argmax(1) == y.to(self.configs.device)).type(torch.float).sum().item()
+        
         correct /= 1.0*size
+        test_loss /= 1.0*size
 
-        return correct
+        return correct, test_loss
 
 
 class TaskSpeechCommand(Task):
@@ -343,7 +345,7 @@ class TaskSpeechCommand(Task):
         self.model.eval()
 
         dataset_size = len(self.test_dataloader.dataset)
-        correct = 0
+        correct, loss = 0, 0
         for data, target in self.test_dataloader:
             data = data.to(self.configs.device)
             target = target.to(self.configs.device)
@@ -352,10 +354,15 @@ class TaskSpeechCommand(Task):
             output = self.model(data)
 
             pred = TaskSpeechCommand.get_likely_index(output)
+            loss += self.loss_fn(pred, target)
+
             # pred = output.argmax(dim=-1)
             correct += TaskSpeechCommand.number_of_correct(pred, target)
 
-        return 1.0 * correct / dataset_size
+        correct /= 1.0*dataset_size
+        loss /= 1.0*dataset_size
+
+        return correct, loss
 
     @staticmethod
     def label_to_index(word):
@@ -481,15 +488,19 @@ class TaskAGNEWS(Task):
     def test(self) -> float:
         self.model.to(self.configs.device)
         self.model.eval()
-        total_acc, total_count = 0, 0
 
+        total_acc, loss = 0, 0
         with torch.no_grad():
             for label, text, offsets in self.test_dataloader:
                 predicted_label = self.model(text, offsets)
-                # loss = self.loss_fn(predicted_label, label)
+                loss += self.loss_fn(predicted_label, label)
                 total_acc += (predicted_label.argmax(1) == label).sum().item()
-                total_count += label.size(0)
-        return total_acc/total_count
+        
+        size = len(self.test_dataloader.dataset)
+        total_acc /= 1.0*size
+        loss /= 1.0*size
+
+        return total_acc, loss
 
     def yield_tokens(self, data_iter):
         # return [self.tokenizer(text) for _, text in data_iter]

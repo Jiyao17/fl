@@ -52,15 +52,15 @@ class __SingleSimulator:
 
             # record result
             if self.configs.verbosity >=3:
-                g_accu = self.server.test_model()
+                g_accu, g_loss = self.server.test_model()
                 print("accuracy %f in simulation %d at global epoch %d" %
                     (g_accu, self.configs.simulation_index, i))
             elif self.configs.verbosity >=1:
                 if i % 10 == 9:
-                    g_accu = self.server.test_model()
+                    g_accu, g_loss = self.server.test_model()
                     if self.configs.verbosity >=2:
-                        print("accuracy %f in simulation %d at global epoch %d" %
-                            (g_accu, self.configs.simulation_index, i))
+                        print("accuracy %f, loss %f in simulation %d at global epoch %d" %
+                            (g_accu, g_loss, self.configs.simulation_index, i))
             
             if i % 10 == 9:
                 f.write("{:.2f} ".format(g_accu))
