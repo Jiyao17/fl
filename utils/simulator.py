@@ -55,14 +55,15 @@ class __SingleSimulator:
                 g_accu, g_loss = self.server.test_model()
                 print("accuracy %f in simulation %d at global epoch %d" %
                     (g_accu, self.configs.simulation_index, i))
-            elif self.configs.verbosity >=1:
+            elif self.configs.verbosity >=2:
                 if i % 10 == 9:
                     g_accu, g_loss = self.server.test_model()
-                    if self.configs.verbosity >=2:
-                        print("accuracy %f, loss %f in simulation %d at global epoch %d" %
-                            (g_accu, g_loss, self.configs.simulation_index, i))
-            
+                    print("accuracy %f, loss %f in simulation %d at global epoch %d" %
+                        (g_accu, g_loss, self.configs.simulation_index, i))
+
             if i % 10 == 9:
+                if self.configs.verbosity <=1:
+                    g_accu, g_loss = self.server.test_model()
                 f.write("{:.2f} ".format(g_accu))
                 f.flush()
 
@@ -160,4 +161,3 @@ class Simulator:
 
         if self.configs.task_name not in UniTask.supported_tasks:
             raise "Task not supported yet."
-

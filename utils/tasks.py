@@ -214,7 +214,7 @@ class TaskFashionMNIST(Task):
         # with torch.no_grad():
         for X, y in self.test_dataloader:
             pred = self.model(X.to(self.configs.device))
-            test_loss += self.loss_fn(pred, y.to(self.device)).item()
+            test_loss += self.loss_fn(pred, y.to(self.configs.device)).item()
             correct += (pred.argmax(1) == y.to(self.configs.device)).type(torch.float).sum().item()
         
         correct /= 1.0*size
