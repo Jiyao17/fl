@@ -354,7 +354,7 @@ class TaskSpeechCommand(Task):
             output = self.model(data)
 
             pred = TaskSpeechCommand.get_likely_index(output)
-            loss += self.loss_fn(pred, target)
+            loss += self.loss_fn(output.squeeze(), target).item()
 
             # pred = output.argmax(dim=-1)
             correct += TaskSpeechCommand.number_of_correct(pred, target)

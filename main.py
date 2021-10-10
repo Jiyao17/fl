@@ -22,7 +22,8 @@ if __name__ == "__main__":
     simulator.configs.l_data_num = 6000
     simulator.configs.g_epoch_num = 1000
     simulator.configs.simulation_num = 5
-    for i in range(0, 3):
+
+    for i in range(1, 2):
         simulator.configs.task_name = UniTask.supported_tasks[i]
         for j in client_nums:
             simulator.configs.client_num = j
