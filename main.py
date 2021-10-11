@@ -15,19 +15,23 @@ from utils.tasks import Config, UniTask
 if __name__ == "__main__":
     # if get_start_method(False) != "spawn":
     set_start_method("spawn")
-    client_nums = [5]
+    client_nums = [3, 4, 5, 6, 7]
+    lrs = [0.005, 0.01, 0.1]
 
     simulator: Simulator = Simulator()
-    simulator.configs.task_name = UniTask.supported_tasks[1]
+    # simulator.configs.task_name = UniTask.supported_tasks[1]
     simulator.configs.l_data_num = 6000
     simulator.configs.g_epoch_num = 1000
     simulator.configs.simulation_num = 5
 
-    for i in range(1, 2):
-        simulator.configs.task_name = UniTask.supported_tasks[i]
-        for j in client_nums:
-            simulator.configs.client_num = j
+    for i, task_name in enumerate(UniTask.supported_tasks):
+        for client_num in client_nums:
+            simulator.configs.task_name = task_name
+            simulator.configs.l_lr = lrs[i]
+            simulator.configs.client_num = client_num
             simulator.start()
+
+
 
     # print(simulator.configs.l_data_num)
 
