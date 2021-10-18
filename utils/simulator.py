@@ -64,7 +64,7 @@ class __SingleSimulator:
             if i % 10 == 9:
                 if self.configs.verbosity <=1:
                     g_accu, g_loss = self.server.test_model()
-                f.write("{:.5f} ".format(g_loss))
+                f.write("{:.5f} ".format(g_accu))
                 f.flush()
 
         # finished
