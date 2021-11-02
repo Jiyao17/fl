@@ -16,63 +16,63 @@ def single_simulation(configs: Config):
     ssimulator.start()
 
 class __SingleSimulator:
-    def __init__(self, configs: Config) -> None:
-        self.configs = configs
+    def __init__(self, config: Config) -> None:
+        self.config = config
 
         # set server
-        trainset, testset = UniTask.get_datasets()
-        self.configs.reside = -1
-        self.configs.testset = testset
-        unitask = UniTask(self.configs)
-        server_task = unitask.get_task()
+        trainset, testset = UniTask.get_datasets(self.config)
+        self.config.reside = -1
+        self.config.testset = testset
+        server_task = UniTask.get_task(self.config)
         self.server = Server(server_task)
 
         # set clients
         # split datasets
-        datasets = dataset_split(trainset, self.configs, 0.8)
+        datasets = dataset_split(trainset, self.config)
         self.clients: list[Client] = []
-        for i in range(self.configs.client_num):
-            new_configs = copy.deepcopy(self.configs)
+        for i in range(self.config.client_num):
+            new_configs = copy.deepcopy(self.config)
             new_configs.reside = i
             new_configs.l_trainset = datasets[i]
+            # print(len(new_configs.l_trainset))d
             # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
-            self.clients.append(Client(UniTask(new_configs).get_task()))
+            self.clients.append(Client(UniTask.get_task(new_configs)))
 
     def start(self):
 
-        result_file = self.configs.result_dir + \
-            "/result" + str(self.configs.simulation_index)
+        result_file = self.config.result_dir + \
+            "/result" + str(self.config.simulation_index)
         f = open(result_file, "a")
-        if self.configs.verbosity >= 3:
-            print("writing to file: %s, simu num: %d" % (result_file, self.configs.simulation_index))
-        args = "{:12} {:11} {:10} {:10} {:11} {:12} {:4}".format(
-            self.configs.task_name, self.configs.g_epoch_num, 
-            self.configs.client_num, self.configs.l_data_num, 
-            self.configs.l_epoch_num, self.configs.l_batch_size, 
-            self.configs.l_lr)
+        if self.config.verbosity >= 3:
+            print("writing to file: %s, simu num: %d" % (result_file, self.config.simulation_index))
+        args = "{:12} {:11} {:10} {:10} {:11} {:12} {:4} {:5}".format(
+            self.config.task_name, self.config.g_epoch_num, 
+            self.config.client_num, self.config.l_data_num, 
+            self.config.l_epoch_num, self.config.l_batch_size, 
+            self.config.l_lr, self.config.sigma)
         f.write("TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM " + 
-            "L_EPOCH_NUM L_BATCH_SIZE L_LR\n" + args + "\n")
+            "L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA\n" + args + "\n")
         f.flush()
 
-        for i in range(self.configs.g_epoch_num):
+        for i in range(self.config.g_epoch_num):
             self.server.distribute_model(self.clients)
             for client in self.clients:
                 client.train_model()
             self.server.aggregate_model(self.clients)
 
             # record result
-            if self.configs.verbosity >=3:
+            if self.config.verbosity >=3:
                 g_accu, g_loss = self.server.test_model()
                 print("accuracy %f in simulation %d at global epoch %d" %
-                    (g_accu, self.configs.simulation_index, i))
-            elif self.configs.verbosity >=2:
+                    (g_accu, self.config.simulation_index, i))
+            elif self.config.verbosity >=2:
                 if i % 10 == 9:
                     g_accu, g_loss = self.server.test_model()
                     print("accuracy %f, loss %f in simulation %d at global epoch %d" %
-                        (g_accu, g_loss, self.configs.simulation_index, i))
+                        (g_accu, g_loss, self.config.simulation_index, i))
 
             if i % 10 == 9:
-                if self.configs.verbosity <=1:
+                if self.config.verbosity <=1:
                     g_accu, g_loss = self.server.test_model()
                 f.write("{:.5f} ".format(g_accu))
                 f.flush()
@@ -81,7 +81,10 @@ class __SingleSimulator:
         f.write("\n")
         f.close()
 
-    def trainset_split(self) -> 'list[Dataset]':
+    def regular_train(self):
+        pass
+
+    def grouped_train(self):
         pass
 
 class Simulator:
@@ -115,11 +118,11 @@ class Simulator:
 
     def start(self):
         if self.configs.verbosity >= 2:
-            print("Arguments: %s %d %d %d %d %d %f %s %s %s" % (
+            print("Arguments: %s %d %d %d %d %d %f %f %s %s %s" % (
                 self.configs.task_name, self.configs.g_epoch_num,
                 self.configs.client_num, self.configs.l_data_num, 
                 self.configs.l_epoch_num, self.configs.l_batch_size,
-                self.configs.l_lr, self.configs.datapath,
+                self.configs.l_lr, self.configs.sigma, self.configs.datapath,
                 self.configs.device, self.configs.result_dir
                 ))
 

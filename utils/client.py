@@ -16,7 +16,10 @@ class Client():
         # self.task.model.load_state_dict(state_dict)
         
     def train_model(self) -> float:
-        return self.task.train()
+        for i in range(self.task.configs.l_epoch_num):
+            self.task.train()
+
+        return 0
 
     def test_model(self) -> float:
         pass

@@ -43,6 +43,7 @@ class Config:
         simulation_index: int=0,
         l_trainset: Dataset=None,
         testset: Dataset=None,
+        sigma: float=0.1
         ) -> None:
 
         self.task_name: str = task_name
@@ -72,6 +73,8 @@ class Config:
         self.l_trainset: Dataset = l_trainset
         # this should be used by the server
         self.testset: Dataset = testset
+        # non-IID degree
+        self.sigma: int = sigma
 
     def __init__(self):
         if len(UniTask.supported_tasks) < 1:
@@ -92,6 +95,7 @@ class Config:
         self.simulation_index:int = 0
         self.l_trainset: Dataset = None
         self.testset: Dataset = None
+        self.sigma: float = 0.1
 
 
 class Task:
@@ -144,7 +148,7 @@ class Task:
 class TaskFashionMNIST(Task):
 
     @staticmethod
-    def get_dataset(config: Config) -> Tuple[Dataset, Dataset]:
+    def get_datasets(config: Config) -> Tuple[Dataset, Dataset]:
         testset = datasets.FashionMNIST(
             root=config.datapath,
             train=False,
@@ -183,18 +187,19 @@ class TaskFashionMNIST(Task):
             drop_last=True
         )
 
-        # if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
         #     data_num = self.configs.l_data_num
         #     reside = self.configs.reside
         #     self.trainset = Subset(Task.trainset,
         #         Task.trainset_perm[data_num*reside: data_num*(reside+1)])
-        self.trainset = self.configs.l_trainset
-        self.train_dataloader = DataLoader(
-                self.trainset,
-                batch_size=self.configs.l_batch_size,
-                shuffle=True,
-                drop_last=True
-                )
+            self.trainset = self.configs.l_trainset
+        # print(len(self.trainset))
+            self.train_dataloader = DataLoader(
+                    self.trainset,
+                    batch_size=self.configs.l_batch_size,
+                    shuffle=True,
+                    drop_last=True
+                    )
 
         if self.configs.verbosity >= 3:
             if self.configs.reside == -1:
@@ -564,10 +569,10 @@ class UniTask:
 
     def get_datasets(config: Config) -> Tuple[Dataset, Dataset]:
         if config.task_name == "FashionMNIST":
-            trainset, testset = TaskFashionMNIST.get_dataset(config)
+            trainset, testset = TaskFashionMNIST.get_datasets(config)
         if config.task_name == "SpeechCommand":
-            trainset, testset = TaskSpeechCommand.get_dataset(config)
+            trainset, testset = TaskSpeechCommand.get_datasets(config)
         if config.task_name == "AG_NEWS":
-            trainset, testset = TaskAGNEWS.get_dataset(config)
+            trainset, testset = TaskAGNEWS.get_datasets(config)
         
         return (trainset, testset)

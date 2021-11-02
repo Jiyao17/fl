@@ -56,7 +56,7 @@ dataset = datasets.FashionMNIST(
 
 # subset = Subset(dataset, index_list[5])
 
-subsets = dataset_split(dataset, Config(), 0.8)
+subsets = dataset_split(dataset, Config(), 0.1)
 lable_list = []
 for (sample, lable) in subsets[7]:
     lable_list.append(lable)

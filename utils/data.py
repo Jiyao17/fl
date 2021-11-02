@@ -24,7 +24,7 @@ def dataset_categorize(dataset: Dataset) -> 'list[int]':
     # subsets = [Subset(dataset, indices) for indices in indices_by_lable]
     return indices_by_lable
 
-def dataset_split(dataset: Dataset, config: Config, sigma: float=0.5, func_type: int=0) -> 'list[Dataset]':
+def dataset_split(dataset: Dataset, config: Config, func_type: int=0) -> 'list[Dataset]':
     """
     Warnning:
     check config mannually that l_data_num * client_num <= dataset length
@@ -32,15 +32,18 @@ def dataset_split(dataset: Dataset, config: Config, sigma: float=0.5, func_type:
     """
     
     if func_type == 0:
-        return dataset_split_0(dataset, config, sigma)
+        return dataset_split_0(dataset, config)
     if func_type == 1:
-        return dataset_split_1(dataset, config, sigma)
+        return dataset_split_1(dataset, config)
 
-def dataset_split_0(dataset: Dataset, config: Config, sigma: float=0.5) -> 'list[Dataset]':
+def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
+    # each dataset is dominated by one class (occupy sigma*l_data_num)
+    # when sigma=1/target_type_num, the datasets are IID
     categorized_index_list = dataset_categorize(dataset)
     indices_list = [[] for i in range(config.client_num)]
 
     # fill the dominant type of data
+    sigma = config.sigma
     dominant_data_num = int(config.l_data_num*sigma)
     category_num = len(categorized_index_list)
     for i in range(len(indices_list)):
