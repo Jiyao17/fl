@@ -40,7 +40,9 @@ class Config:
         verbosity: int,
         simulation_num: int,
         reside: int=0,
-        simulation_index: int=None,
+        simulation_index: int=0,
+        l_trainset: Dataset=None,
+        testset: Dataset=None,
         ) -> None:
 
         self.task_name: str = task_name
@@ -57,13 +59,19 @@ class Config:
         self.device: torch.device = torch.device(device)
         self.result_dir: str = result_dir
         self.verbosity:int = verbosity
+
         # run multiple simulations in processes at one time
         self.simulation_num: int = simulation_num
-        # task reside on server (-1) or client (0, 1, ..., client_num-1)
-        self.reside:int = reside
         # for single simulators to know its index
         # so it can write results to its file
         self.simulation_index:int = simulation_index
+
+        # task reside on server (-1) or client (0, 1, ..., client_num-1)
+        self.reside:int = reside
+        # this should be different for every client
+        self.l_trainset: Dataset = l_trainset
+        # this should be used by the server
+        self.testset: Dataset = testset
 
     def __init__(self):
         if len(UniTask.supported_tasks) < 1:
@@ -82,6 +90,8 @@ class Config:
         self.simulation_num: int = 1
         self.reside:int = -1
         self.simulation_index:int = 0
+        self.l_trainset: Dataset = None
+        self.testset: Dataset = None
 
 
 class Task:
@@ -142,6 +152,7 @@ class TaskFashionMNIST(Task):
         self.get_dataloader()
 
     def get_dataloader(self):
+
         # if dataset not loaded, load first
         if Task.testset == None:
             Task.testset = datasets.FashionMNIST(

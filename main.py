@@ -5,11 +5,10 @@
 # TextClassification: pytorch tutorial text
 
 import json
-from multiprocessing import Process, get_start_method, set_start_method
+from multiprocessing import set_start_method
 
-from utils.models import FashionMNIST
 from utils.simulator import Simulator
-from utils.tasks import Config, UniTask
+from utils.tasks import UniTask
 
 
 if __name__ == "__main__":

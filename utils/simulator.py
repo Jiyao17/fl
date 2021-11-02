@@ -4,10 +4,12 @@ import copy
 from multiprocessing import Process
 
 import torch
+from torch.utils.data.dataset import Dataset
 
 from utils.client import Client
 from utils.server import Server
 from utils.tasks import UniTask, Config
+from utils.data import dataset_split
 
 def single_simulation(configs: Config):
     ssimulator = __SingleSimulator(configs)
@@ -16,15 +18,20 @@ def single_simulation(configs: Config):
 class __SingleSimulator:
     def __init__(self, configs: Config) -> None:
         self.configs = configs
+
         # set server
         self.configs.reside = -1
         server_task = UniTask(self.configs).get_task()
         self.server = Server(server_task)
+
         # set clients
+        # split datasets
+        datasets = dataset_split()
         self.clients: list[Client] = []
         for i in range(self.configs.client_num):
             new_configs = copy.deepcopy(self.configs)
             new_configs.reside = i
+            new_configs.l_trainset = datasets[i]
             # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
             self.clients.append(Client(UniTask(new_configs).get_task()))
 
@@ -71,6 +78,8 @@ class __SingleSimulator:
         f.write("\n")
         f.close()
 
+    def trainset_split(self) -> 'list[Dataset]':
+        pass
 
 class Simulator:
 
