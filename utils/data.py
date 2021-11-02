@@ -5,6 +5,7 @@ from torch.utils.data.dataset import Dataset, Subset
 
 from utils.tasks import Config
 
+
 def dataset_categorize(dataset: Dataset) -> 'list[int]':
     targets = dataset.targets.tolist()
     targets_list = list(set(targets))

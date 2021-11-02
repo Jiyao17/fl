@@ -20,13 +20,16 @@ class __SingleSimulator:
         self.configs = configs
 
         # set server
+        trainset, testset = UniTask.get_datasets()
         self.configs.reside = -1
-        server_task = UniTask(self.configs).get_task()
+        self.configs.testset = testset
+        unitask = UniTask(self.configs)
+        server_task = unitask.get_task()
         self.server = Server(server_task)
 
         # set clients
         # split datasets
-        datasets = dataset_split()
+        datasets = dataset_split(trainset, self.configs, 0.8)
         self.clients: list[Client] = []
         for i in range(self.configs.client_num):
             new_configs = copy.deepcopy(self.configs)

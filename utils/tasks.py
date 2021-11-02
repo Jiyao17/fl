@@ -1,4 +1,4 @@
-from typing import overload
+from typing import List, Tuple, overload
 import copy
 import os
 from numpy.lib.function_base import select
@@ -143,6 +143,23 @@ class Task:
 
 class TaskFashionMNIST(Task):
 
+    @staticmethod
+    def get_dataset(config: Config) -> Tuple[Dataset, Dataset]:
+        testset = datasets.FashionMNIST(
+            root=config.datapath,
+            train=False,
+            # download=True,
+            transform=transforms.ToTensor(),
+            )
+        trainset = datasets.FashionMNIST(
+            root=config.datapath,
+            train=True,
+            # download=True,
+            transform=transforms.ToTensor(),
+            )
+
+        return (trainset, testset)
+
     def __init__(self, configs: Config):
         super().__init__(configs)
 
@@ -154,25 +171,11 @@ class TaskFashionMNIST(Task):
     def get_dataloader(self):
 
         # if dataset not loaded, load first
-        if Task.testset == None:
-            Task.testset = datasets.FashionMNIST(
-                root=self.configs.datapath,
-                train=False,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
-        if Task.trainset == None:
-            Task.trainset = datasets.FashionMNIST(
-                root=self.configs.datapath,
-                train=True,
-                download=True,
-                transform=transforms.ToTensor(),
-                )
-        if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
+        # if Task.trainset_perm == None:
+        #     Task.trainset_perm = randperm(len(Task.trainset)).tolist()
 
 
-        self.testset = Task.testset
+        self.testset = self.configs.testset
         self.test_dataloader = DataLoader(
             self.testset,
             batch_size=self.configs.l_batch_size,
@@ -180,11 +183,12 @@ class TaskFashionMNIST(Task):
             drop_last=True
         )
 
-        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
-            data_num = self.configs.l_data_num
-            reside = self.configs.reside
-            self.trainset = Subset(Task.trainset,
-                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+        # if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+        #     data_num = self.configs.l_data_num
+        #     reside = self.configs.reside
+        #     self.trainset = Subset(Task.trainset,
+        #         Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+        self.trainset = self.configs.l_trainset
         self.train_dataloader = DataLoader(
                 self.trainset,
                 batch_size=self.configs.l_batch_size,
@@ -198,7 +202,7 @@ class TaskFashionMNIST(Task):
                     (self.configs.simulation_index, len(self.testset)))
             else:
                 print("Dataset length in simulation %d: %d, %d-%d" %
-                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
+                    (self.configs.simulation_index, len(self.configs.l_trainset)))
 
     def train(self) -> float:
         self.model.to(self.configs.device)
@@ -542,18 +546,28 @@ class UniTask:
     #  "AG_NEWS"
     supported_tasks = ["FashionMNIST", "SpeechCommand", "AG_NEWS"]
 
-    def __init__(self, configs: Config) -> None:
-        self.configs = copy.deepcopy(configs)
-        self.task = None
-        if self.configs.task_name not in UniTask.supported_tasks:
+    def __init__(self) -> None:
+        pass
+
+    @staticmethod
+    def get_task(config: Config) -> Task:
+        if config.task_name not in UniTask.supported_tasks:
             raise "Task not supported yet."
 
-        if self.configs.task_name == "FashionMNIST":
-            self.task = TaskFashionMNIST(self.configs)
-        if self.configs.task_name == "SpeechCommand":
-            self.task = TaskSpeechCommand(self.configs)
-        if self.configs.task_name == "AG_NEWS":
-            self.task = TaskAGNEWS(self.configs)
+        if config.task_name == "FashionMNIST":
+            task = TaskFashionMNIST(config)
+        if config.task_name == "SpeechCommand":
+            task = TaskSpeechCommand(config)
+        if config.task_name == "AG_NEWS":
+            task = TaskAGNEWS(config)
+        return task
 
-    def get_task(self) -> Task:
-        return self.task
+    def get_datasets(config: Config) -> Tuple[Dataset, Dataset]:
+        if config.task_name == "FashionMNIST":
+            trainset, testset = TaskFashionMNIST.get_dataset(config)
+        if config.task_name == "SpeechCommand":
+            trainset, testset = TaskSpeechCommand.get_dataset(config)
+        if config.task_name == "AG_NEWS":
+            trainset, testset = TaskAGNEWS.get_dataset(config)
+        
+        return (trainset, testset)

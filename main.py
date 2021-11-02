@@ -23,13 +23,14 @@ if __name__ == "__main__":
     simulator.configs.g_epoch_num = 200
     simulator.configs.simulation_num = 3
 
-    for i, task_name in enumerate(UniTask.supported_tasks):
-        simulator.configs.task_name = task_name
-        simulator.configs.l_lr = lrs[i]
+    # for i, task_name in enumerate(UniTask.supported_tasks):
+        # simulator.configs.task_name = task_name
+        # simulator.configs.l_lr = 0.01
 
-        for client_num in client_nums:
-            simulator.configs.client_num = client_num
-            simulator.start()
+    # for client_num in client_nums:
+        # simulator.configs.client_num = client_num
+    
+    simulator.start()
 
 
 
