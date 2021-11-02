@@ -6,7 +6,11 @@ from torch.utils.data.dataset import Dataset, Subset
 from utils.tasks import Config
 
 
-def dataset_categorize(dataset: Dataset) -> 'list[int]':
+def dataset_categorize(dataset: Dataset) -> 'list[list[int]]':
+    """
+    return value:
+    list[i] = list[int] = all indices for category i
+    """
     targets = dataset.targets.tolist()
     targets_list = list(set(targets))
     # can be deleted, does not matter but more clear if kept
@@ -37,6 +41,11 @@ def dataset_split(dataset: Dataset, config: Config, func_type: int=0) -> 'list[D
         return dataset_split_1(dataset, config)
 
 def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
+    """
+    return value:
+    list[Dataset], list[i]: a dataset dominated by category (i % category_num)
+    i_max = client_num
+    """
     # each dataset is dominated by one class (occupy sigma*l_data_num)
     # when sigma=1/target_type_num, the datasets are IID
     categorized_index_list = dataset_categorize(dataset)
@@ -64,13 +73,6 @@ def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
 
     subsets = [ Subset(dataset, indices) for indices in indices_list ]
     return subsets
-
-
-
-
-    
-
-
 
 def dataset_split_1(dataset: Dataset, config: Config, sigma: float=0.5) -> 'list[Dataset]':
     pass

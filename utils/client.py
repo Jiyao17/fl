@@ -15,9 +15,13 @@ class Client():
         self.task.update_model(global_model)
         # self.task.model.load_state_dict(state_dict)
         
-    def train_model(self) -> float:
-        for i in range(self.task.configs.l_epoch_num):
-            self.task.train()
+    def train_model(self, l_epoch_num: int=0) -> float:
+        if l_epoch_num != 0:
+            for i in range(l_epoch_num):
+                self.task.train()
+        else:
+            for i in range(self.task.configs.l_epoch_num):
+                self.task.train()
 
         return 0
 
