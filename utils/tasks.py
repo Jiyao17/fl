@@ -79,7 +79,7 @@ class Config:
         self.task_name: str = UniTask.supported_tasks[0]
         self.g_epoch_num: int = 100
         self.client_num: int = 100
-        self.l_data_num: int = 100
+        self.l_data_num: int = 500
         self.l_epoch_num: int = 5
         self.l_batch_size: int = 64
         self.l_lr: float = 0.01

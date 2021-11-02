@@ -14,14 +14,14 @@ from utils.tasks import UniTask
 if __name__ == "__main__":
     # if get_start_method(False) != "spawn":
     set_start_method("spawn")
-    client_nums = [3, 4, 5, 6, 7]
-    lrs = [0.005, 0.01, 0.1]
+    # client_nums = [3, 4, 5, 6, 7]
+    # lrs = [0.01, 0.01, 0.1]
 
     simulator: Simulator = Simulator()
-    # simulator.configs.task_name = UniTask.supported_tasks[1]
-    simulator.configs.l_data_num = 6000
-    simulator.configs.g_epoch_num = 1000
-    simulator.configs.simulation_num = 5
+    simulator.configs.task_name = UniTask.supported_tasks[0]
+    # simulator.configs.l_data_num = 6000
+    simulator.configs.g_epoch_num = 200
+    simulator.configs.simulation_num = 3
 
     for i, task_name in enumerate(UniTask.supported_tasks):
         simulator.configs.task_name = task_name
