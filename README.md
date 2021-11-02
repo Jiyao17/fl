@@ -16,7 +16,9 @@ pip install --upgrade pip
 
 pip3 install torch torchvision torchaudio torchtext
 
-Device allowed: CUDA, cpu
+Device allowed:
+
+CUDA, cpu
 
 # Known Issues
 When the dataset is not downloaded, do not run multiple simulation,
@@ -31,4 +33,8 @@ Inherite Task class in task.py, and modify UniTask. Please refer to existing tas
 
 # TODO
 
-Add support for batch configurations
+Add support for:
+
+batch configurations
+
+splitting dataset in the non-IID manner
