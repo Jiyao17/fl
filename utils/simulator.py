@@ -91,11 +91,11 @@ class __SingleSimulator:
         targets = self.server.configs.testset.targets.tolist()
         category_num = len(set(targets))
 
-        groups: 'list[list[Client]]' = [[]]
+        group_num = self.config.client_num/category_num
+        groups: 'list[list[Client]]' = [[] for i in range(group_num)]
         counter: int = 0
-        for i in range(self.config.client_num/category_num):
-            for j in range(category_num):
-                groups[i].append(self.clients[counter])
+        for i in range(group_num):
+            groups[i] = self.clients[i*category_num : (i+1)*category_num]
 
         for i in range(self.config.g_epoch_num):
             Server.distribute_model(model, self.clients)
