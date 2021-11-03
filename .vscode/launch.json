@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "/home/tuo28237/projects/fl/main.py",
             "console": "integratedTerminal",
-            "args": ["AG_NEWS", "100", "1", "10000", "5", "64", "0.01", "-d", "cuda", "-n", "1", "-v", "2"],
+            // "args": ["AG_NEWS", "100", "1", "10000", "5", "64", "0.01", "-d", "cuda", "-n", "1", "-v", "2"],
 
         }
     ]

@@ -22,8 +22,9 @@ if __name__ == "__main__":
     simulator.configs.client_num = 100
     simulator.configs.l_data_num = 500
     simulator.configs.g_epoch_num = 100
-    simulator.configs.sigma = 0.8
-    simulator.configs.simulation_num = 5
+    simulator.configs.sigma = 1
+    simulator.configs.simulation_num = 4
+    simulator.configs.result_dir = "./result-group/"
 
     # for i, task_name in enumerate(UniTask.supported_tasks):
         # simulator.configs.task_name = task_name

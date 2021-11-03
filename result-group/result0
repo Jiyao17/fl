@@ -1,0 +1,34 @@
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+0.09990 0.09990 0.09810 0.10280 0.13070 0.27610 0.31030 0.31030 0.35590 0.43250 0.44360 0.45210 0.47040 0.49110 0.50520 0.50470 TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01   0.8
+0.36320 0.50630 0.59080 0.60480 0.61690 0.62650 0.64210 0.65030 0.65840 0.66460 
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01     1
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01     1
+0.17210 0.34630 0.35460 0.37380 0.33050 

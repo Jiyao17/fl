@@ -1,0 +1,5 @@
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01     1
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+FashionMNIST         100        100        500           5           64 0.01     1
+0.27750 0.41100 0.44110 0.36140 0.23440 

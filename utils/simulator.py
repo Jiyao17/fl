@@ -55,7 +55,8 @@ class __SingleSimulator:
             "L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA\n" + args + "\n")
         f.flush()
 
-        self.regular_train()
+        # self.regular_train(f)
+        self.grouped_train(f)
 
         # finished
         f.write("\n")
@@ -69,56 +70,71 @@ class __SingleSimulator:
                 client.train_model()
             self.server.aggregate_model(self.clients)
 
-        # record result
-        if self.config.verbosity >=3:
-            g_accu, g_loss = self.server.test_model()
-            print("accuracy %f in simulation %d at global epoch %d" %
-                (g_accu, self.config.simulation_index, i))
-        elif self.config.verbosity >=2:
-            if i % 10 == 9:
+            # record result
+            if self.config.verbosity >=3:
                 g_accu, g_loss = self.server.test_model()
-                print("accuracy %f, loss %f in simulation %d at global epoch %d" %
-                    (g_accu, g_loss, self.config.simulation_index, i))
+                print("accuracy %f in simulation %d at global epoch %d" %
+                    (g_accu, self.config.simulation_index, i))
+            elif self.config.verbosity >=2:
+                if i % 10 == 9:
+                    g_accu, g_loss = self.server.test_model()
+                    print("accuracy %f, loss %f in simulation %d at global epoch %d" %
+                        (g_accu, g_loss, self.config.simulation_index, i))
 
-        if i % 10 == 9:
-            if self.config.verbosity <=1:
-                g_accu, g_loss = self.server.test_model()
-            f.write("{:.5f} ".format(g_accu))
-            f.flush()
+            if i % 10 == 9:
+                if self.config.verbosity <=1:
+                    g_accu, g_loss = self.server.test_model()
+                f.write("{:.5f} ".format(g_accu))
+                f.flush()
 
     def grouped_train(self, f: TextIOWrapper, ):
-        model = self.server.task.model
         targets = self.server.configs.testset.targets.tolist()
         category_num = len(set(targets))
 
-        group_num = self.config.client_num/category_num
-        groups: 'list[list[Client]]' = [[] for i in range(group_num)]
-        counter: int = 0
+        group_num = int(self.config.client_num/category_num)
+        group_models = [copy.deepcopy(self.server.task.model.to(self.config.device)) for i in range(group_num) ]
+        client_groups: 'list[list[Client]]' = [[] for i in range(group_num)]
         for i in range(group_num):
-            groups[i] = self.clients[i*category_num : (i+1)*category_num]
+            client_groups[i] = self.clients[i*category_num : (i+1)*category_num]
 
+        # used to check data distribution in any group
+        # lable_on_clients = [[] for client in client_groups[6]]
+        # for i, client in enumerate(client_groups[6]):
+        #     for (sample, lable) in client.task.configs.l_trainset:
+        #         lable_on_clients[i].append(lable)
+
+        #     for j in range(10):
+        #         a = lable_on_clients[i].count(j)
+        #         print(a, end=" ")
+        #     print("")
+        
         for i in range(self.config.g_epoch_num):
-            Server.distribute_model(model, self.clients)
-            for client in self.clients:
-                client.train_model(1)
-            Server.aggregate_model(self.clients)
+            for j in range(group_num):
+                Server.group_distribute(group_models[j], client_groups[j])
+                for k in range(self.config.l_epoch_num):
+                    for client in client_groups[j]:
+                        client.train_model(1)
+                    group_state_dict = Server.group_aggregate(self.clients)
+                    group_models[j].load_state_dict(group_state_dict)
+            
+            self.server.global_aggregate(group_models)
 
-        # record result
-        if self.config.verbosity >=3:
-            g_accu, g_loss = self.server.test_model()
-            print("accuracy %f in simulation %d at global epoch %d" %
-                (g_accu, self.config.simulation_index, i))
-        elif self.config.verbosity >=2:
+            # record result
+            if self.config.verbosity >=3:
+                g_accu, g_loss = self.server.test_model()
+                print("accuracy %f in simulation %d at global epoch %d" %
+                    (g_accu, self.config.simulation_index, i))
+            elif self.config.verbosity >=2:
+                if i % 10 == 9:
+                    g_accu, g_loss = self.server.test_model()
+                    print("accuracy %f, loss %f in simulation %d at global epoch %d" %
+                        (g_accu, g_loss, self.config.simulation_index, i))
+
             if i % 10 == 9:
-                g_accu, g_loss = self.server.test_model()
-                print("accuracy %f, loss %f in simulation %d at global epoch %d" %
-                    (g_accu, g_loss, self.config.simulation_index, i))
-
-        if i % 10 == 9:
-            if self.config.verbosity <=1:
-                g_accu, g_loss = self.server.test_model()
-            f.write("{:.5f} ".format(g_accu))
-            f.flush()
+                if self.config.verbosity <=1:
+                    g_accu, g_loss = self.server.test_model()
+                f.write("{:.5f} ".format(g_accu))
+                f.flush()
 
 
 class Simulator:

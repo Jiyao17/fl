@@ -131,7 +131,7 @@ class Task:
         pass
 
     def get_model(self) -> nn.Module:
-        return self.model
+        return self.model.to(self.configs.device)
 
     def update_model(self, new_model: nn.Module):
         state_dict = new_model.state_dict()
