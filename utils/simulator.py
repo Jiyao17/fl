@@ -92,7 +92,7 @@ class __SingleSimulator:
         category_num = len(set(targets))
 
         group_num = int(self.config.client_num/category_num)
-        group_models = [copy.deepcopy(self.server.task.model.to(self.config.device)) for i in range(group_num) ]
+        group_models = [self.server.task.model.to(self.config.device) for i in range(group_num) ]
         client_groups: 'list[list[Client]]' = [[] for i in range(group_num)]
         for i in range(group_num):
             client_groups[i] = self.clients[i*category_num : (i+1)*category_num]
@@ -109,13 +109,15 @@ class __SingleSimulator:
         #     print("")
         
         for i in range(self.config.g_epoch_num):
+            self.server.global_distribute(group_models)
+
             for j in range(group_num):
                 Server.group_distribute(group_models[j], client_groups[j])
                 for k in range(self.config.l_epoch_num):
                     for client in client_groups[j]:
                         client.train_model(1)
-                    group_state_dict = Server.group_aggregate(self.clients)
-                    group_models[j].load_state_dict(group_state_dict)
+                group_state_dict = Server.group_aggregate(self.clients)
+                group_models[j].load_state_dict(group_state_dict)
             
             self.server.global_aggregate(group_models)
 

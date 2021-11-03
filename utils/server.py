@@ -3,6 +3,7 @@ import copy
 
 import torch
 from torch import nn
+from torch.nn.modules import module
 
 from utils.client import Client
 from utils.tasks import Task
@@ -10,8 +11,8 @@ from utils.tasks import Task
 class Server():
     @staticmethod
     def group_distribute(model: nn.Module, clients: 'list[Client]'):
-        for client in clients:
-            client.update_model(model)
+        for i in range(len(clients)):
+            clients[i].update_model(model)
     
     @staticmethod
     def group_aggregate(clients: 'list[Client]'):
@@ -28,6 +29,12 @@ class Server():
         
         return state_dict_avg
 
+    def global_distribute(self, group_models: 'list[nn.Module]'):
+        for i in range(len(group_models)):
+            # stat_dict = copy.deepcopy(model.state_dict())
+            stat_dict = self.task.get_model().state_dict()
+            group_models[i].load_state_dict(stat_dict)
+            
     def global_aggregate(self, models: 'list[nn.Module]'):
         """
         only for grouped train
