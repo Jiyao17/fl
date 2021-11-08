@@ -36,9 +36,13 @@ def dataset_split(dataset: Dataset, config: Config, func_type: int=0) -> 'list[D
     """
     
     if func_type == 0:
+        # non-iid spliting
         return dataset_split_0(dataset, config)
     if func_type == 1:
+        # iid spliting, 5000-7000
         return dataset_split_1(dataset, config)
+    if func_type == 2:
+        return dataset_split_2(dataset, config)
 
 def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
     """
@@ -74,5 +78,51 @@ def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
     subsets = [ Subset(dataset, indices) for indices in indices_list ]
     return subsets
 
-def dataset_split_1(dataset: Dataset, config: Config, sigma: float=0.5) -> 'list[Dataset]':
-    pass
+def dataset_split_1(dataset: Dataset, config: Config) -> 'list[Dataset]':
+
+    random.seed()
+    subsets: list[Subset] = [ None for i in range(config.client_num)]
+    indices = [ i for i in range(len(dataset))]
+    random.shuffle(indices)
+    start_point = 0
+    for i in range(config.client_num):
+        data_num = random.randrange(5000, 7000)
+        subsets[i] = Subset(dataset, indices[start_point : start_point + data_num])
+        start_point += data_num
+
+    return subsets
+
+def dataset_split_2(dataset: Dataset, config: Config) -> 'list[Dataset]':
+    """
+    r = config.sigma
+    return value:
+    list[Dataset], list[i]: a dataset contains r categories
+    i_max = client_num
+    """
+    # each dataset is dominated by one class (occupy sigma*l_data_num)
+    # when sigma=1/target_type_num, the datasets are IID
+    categorized_index_list = dataset_categorize(dataset)
+    indices_list = [[] for i in range(config.client_num)]
+
+    # fill the dominant type of data
+    r = config.sigma
+    dominant_data_num = int(config.l_data_num*r)
+    category_num = len(categorized_index_list)
+    for i in range(len(indices_list)):
+        cur_category = i % category_num
+        indices_list[i] += categorized_index_list[cur_category][:dominant_data_num]
+        categorized_index_list[cur_category] = categorized_index_list[cur_category][dominant_data_num:]
+
+    # fill other types of data
+    other_type_num = len(categorized_index_list) - 1
+    other_data_num = int(config.l_data_num * (1 - sigma) / other_type_num)
+    for i in range(len(indices_list)):
+        dominant_category = i % category_num
+        for j in range(len(categorized_index_list)):
+            # not the dominant type
+            if j != dominant_category:
+                indices_list[i] += (categorized_index_list[j][:other_data_num])
+                categorized_index_list[j] = categorized_index_list[j][other_data_num:]
+
+    subsets = [ Subset(dataset, indices) for indices in indices_list ]
+    return subsets

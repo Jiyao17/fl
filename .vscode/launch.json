@@ -5,14 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        
+        {
             "name": "fl",
-            "env": {"CUDA_VISIBLE_DEVICES":"1"},
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            },
             "type": "python",
             "request": "launch",
             "program": "/home/tuo28237/projects/fl/main.py",
             "console": "integratedTerminal",
             // "args": ["AG_NEWS", "100", "1", "10000", "5", "64", "0.01", "-d", "cuda", "-n", "1", "-v", "2"],
-
         }
     ]
 }

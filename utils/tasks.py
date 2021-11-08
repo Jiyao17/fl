@@ -43,7 +43,8 @@ class Config:
         simulation_index: int=0,
         l_trainset: Dataset=None,
         testset: Dataset=None,
-        sigma: float=0.1
+        sigma: float=0.1,
+        iid_test: int=1,
         ) -> None:
 
         self.task_name: str = task_name
@@ -75,6 +76,7 @@ class Config:
         self.testset: Dataset = testset
         # non-IID degree
         self.sigma: int = sigma
+        self.iid_test = iid_test
 
     def __init__(self):
         if len(UniTask.supported_tasks) < 1:
@@ -96,6 +98,7 @@ class Config:
         self.l_trainset: Dataset = None
         self.testset: Dataset = None
         self.sigma: float = 0.1
+        self.iid_test: int = 1
 
 
 class Task:
@@ -177,7 +180,6 @@ class TaskFashionMNIST(Task):
         # if dataset not loaded, load first
         # if Task.trainset_perm == None:
         #     Task.trainset_perm = randperm(len(Task.trainset)).tolist()
-
 
         self.testset = self.configs.testset
         self.test_dataloader = DataLoader(
@@ -286,20 +288,16 @@ class TaskSpeechCommand(Task):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.configs.l_lr, weight_decay=0.0001)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.5)  # reduce the learning after 20 epochs by a factor of 10
 
+    @staticmethod
+    def get_datasets(config: Config) -> Tuple[Dataset, Dataset]:
+        testset = TaskSpeechCommand.SubsetSC("testing", config.datapath)
+        trainset = TaskSpeechCommand.SubsetSC("training", config.datapath)
+
+        return (trainset, testset)
+
+
     def get_dataloader(self):
-        # if dataset not loaded, load first
-        if Task.testset == None:
-            Task.testset = TaskSpeechCommand.SubsetSC("testing", self.configs.datapath)
-        if Task.trainset == None:
-            Task.trainset = TaskSpeechCommand.SubsetSC("training", self.configs.datapath)
-        if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
-        # if TaskSpeechCommand.labels == None:
-        #     TaskSpeechCommand.labels = sorted(
-        #         list(set(datapoint[2] for datapoint in Task.trainset)))
-        #     print(type(TaskSpeechCommand.labels))
-        #     print(TaskSpeechCommand.labels)
-            
+
         if self.configs.device == torch.device("cuda"):
             num_workers = 1
             pin_memory = True
@@ -308,7 +306,6 @@ class TaskSpeechCommand(Task):
             pin_memory = False
 
         # test dataloader
-        self.testset = Task.testset
         self.test_dataloader = DataLoader(
                 self.testset,
                 batch_size=self.configs.l_batch_size,
@@ -319,13 +316,8 @@ class TaskSpeechCommand(Task):
                 pin_memory=pin_memory,
                 )
         # train dataloader
-        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
-            data_num = self.configs.l_data_num
-            reside = self.configs.reside
-            self.trainset = Subset(Task.trainset,
-                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
         self.train_dataloader = DataLoader(
-            self.trainset,
+            self.configs.l_trainset,
             batch_size=self.configs.l_batch_size,
             shuffle=True,
             collate_fn=TaskSpeechCommand.collate_fn,
@@ -333,14 +325,6 @@ class TaskSpeechCommand(Task):
             pin_memory=pin_memory,
             drop_last=True
             )
-
-        if self.configs.verbosity >= 3:
-            if self.configs.reside == -1:
-                print("Test set length in simulation %d: %d" %
-                    (self.configs.simulation_index, len(self.testset)))
-            else:
-                print("Dataset length in simulation %d: %d, %d-%d" %
-                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
 
     def train(self):
         self.model.to(self.configs.device)
@@ -450,42 +434,33 @@ class TaskAGNEWS(Task):
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.configs.l_lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 1.0, gamma=0.1)
 
-    def get_dataloader(self):
-        if Task.testset == None:
-            test_iter = AG_NEWS(root=self.configs.datapath, split="test")
-            Task.testset = to_map_style_dataset(test_iter)   
-        if Task.trainset == None:
-            train_iter = AG_NEWS(root=self.configs.datapath, split="train")
-            Task.trainset = to_map_style_dataset(train_iter)
-        if Task.trainset_perm == None:
-            Task.trainset_perm = randperm(len(Task.trainset)).tolist()
+        self.get_dataloader()
 
-        self.testset = Task.testset
+    @staticmethod
+    def get_datasets(config: Config) -> Tuple[Dataset, Dataset]:
+        test_iter = AG_NEWS(root=config.datapath, split="test")
+        testset = to_map_style_dataset(test_iter)   
+        train_iter = AG_NEWS(root=config.datapath, split="train")
+        trainset = to_map_style_dataset(train_iter)
+
+        return (trainset, testset)
+
+
+    def get_dataloader(self):
+        self.testset = self.configs.testset
+        self.trainset = self.configs.l_trainset
+
         self.test_dataloader = DataLoader(
             self.testset,
             batch_size=self.configs.l_batch_size,
             shuffle=True, 
             collate_fn=self.collate_batch)
 
-        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
-            data_num = self.configs.l_data_num
-            reside = self.configs.reside
-            self.trainset = Subset(Task.trainset,
-                Task.trainset_perm[data_num*reside: data_num*(reside+1)])
         self.train_dataloader = DataLoader(
             self.trainset, 
             batch_size=self.configs.l_batch_size, 
             shuffle=False, 
             collate_fn=self.collate_batch)
-
-
-        if self.configs.verbosity >= 3:
-            if self.configs.reside == -1:
-                print("Test set length in simulation %d: %d" %
-                    (self.configs.simulation_index, len(self.testset)))
-            else:
-                print("Dataset length in simulation %d: %d, %d-%d" %
-                    (self.configs.simulation_index, data_num, data_num*reside, data_num*(reside+1)))
 
     def train(self) -> float:
         self.model.to(self.configs.device)

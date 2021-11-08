@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import copy
 from io import TextIOWrapper
 from multiprocessing import Process
+from os import confstr
 
 import torch
 from torch.utils.data.dataset import Dataset
@@ -29,7 +30,15 @@ class __SingleSimulator:
 
         # set clients
         # split datasets
-        datasets = dataset_split(trainset, self.config)
+        if config.iid_test == 1:
+            # non-iid split
+            print("Spliting data non-iid")
+            datasets = dataset_split(trainset, self.config, 0)
+        else:
+            # uniformly split
+            print("Spliting data uniformly")
+            datasets = dataset_split(trainset, self.config, 1)
+
         self.clients: list[Client] = []
         for i in range(self.config.client_num):
             new_configs = copy.deepcopy(self.config)
@@ -43,27 +52,39 @@ class __SingleSimulator:
 
         result_file = self.config.result_dir + \
             "/result" + str(self.config.simulation_index)
+        result_file_loss = self.config.result_dir + \
+            "/result" + str(self.config.simulation_index) + "loss"
         f = open(result_file, "a")
+        f_loss = open(result_file_loss, "a")
         if self.config.verbosity >= 3:
             print("writing to file: %s, simu num: %d" % (result_file, self.config.simulation_index))
-        args = "{:12} {:11} {:10} {:10} {:11} {:12} {:4} {:5}".format(
+        args = "{:12} {:12} {:10} {:10} {:11} {:12} {:4} {:5}".format(
             self.config.task_name, self.config.g_epoch_num, 
             self.config.client_num, self.config.l_data_num, 
             self.config.l_epoch_num, self.config.l_batch_size, 
             self.config.l_lr, self.config.sigma)
-        f.write("TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM " + 
-            "L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA\n" + args + "\n")
+        
+        conf_str = "TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM " + \
+            "L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA\n" + args + "\n"
+        f.write(conf_str)
         f.flush()
+        f_loss.write(conf_str)
+        f_loss.flush()
 
-        # self.regular_train(f)
-        self.grouped_train(f)
+        if self.config.iid_test == 1:
+            self.regular_train(f, f_loss)  
+            # self.grouped_train(f)
+        else:
+            self.regular_train(f, f_loss)  
 
         # finished
         f.write("\n")
         f.close()
+        f_loss.write("\n")
+        f_loss.close()
 
-
-    def regular_train(self, f: TextIOWrapper, ):
+    def regular_train(self, f: TextIOWrapper, f_loss: TextIOWrapper, ):
+        print("doing regular train")
         for i in range(self.config.g_epoch_num):
             self.server.distribute_model(self.clients)
             for client in self.clients:
@@ -86,8 +107,12 @@ class __SingleSimulator:
                     g_accu, g_loss = self.server.test_model()
                 f.write("{:.5f} ".format(g_accu))
                 f.flush()
+                f_loss.write("{:.5f} ".format(g_loss))
+                f_loss.flush()
 
     def grouped_train(self, f: TextIOWrapper, ):
+        print("doing grouped train")
+
         targets = self.server.configs.testset.targets.tolist()
         category_num = len(set(targets))
 
