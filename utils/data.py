@@ -5,6 +5,8 @@ from torch.utils.data.dataset import Dataset, Subset
 
 from utils.tasks import Config
 
+TEST_TYPES = ["iid-range", "noniid-sigma", "noniid-sigma-group", "noniid-r", "noniid-r-group"]
+
 
 def dataset_categorize(dataset: Dataset) -> 'list[list[int]]':
     """
@@ -28,23 +30,23 @@ def dataset_categorize(dataset: Dataset) -> 'list[list[int]]':
     # subsets = [Subset(dataset, indices) for indices in indices_by_lable]
     return indices_by_lable
 
-def dataset_split(dataset: Dataset, config: Config, func_type: int=0) -> 'list[Dataset]':
+def dataset_split(dataset: Dataset, config: Config) -> 'list[Dataset]':
     """
     Warnning:
     check config mannually that l_data_num * client_num <= dataset length
     For non-IID splitting, make sure the dataset can suffice the splitting
     """
     
-    if func_type == 0:
+    if config.test_type[:12] == "noniid-sigma":
         # non-iid spliting
-        return dataset_split_0(dataset, config)
-    if func_type == 1:
+        return dataset_split_sigma(dataset, config)
+    if config.test_type == "iid-range":
         # iid spliting, 5000-7000
-        return dataset_split_1(dataset, config)
-    if func_type == 2:
-        return dataset_split_2(dataset, config)
+        return dataset_split_iid_range(dataset, config)
+    if config.test_type[:8] == "noniid-r":
+        return dataset_split_r(dataset, config)
 
-def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
+def dataset_split_sigma(dataset: Dataset, config: Config) -> 'list[Dataset]':
     """
     return value:
     list[Dataset], list[i]: a dataset dominated by category (i % category_num)
@@ -78,7 +80,7 @@ def dataset_split_0(dataset: Dataset, config: Config) -> 'list[Dataset]':
     subsets = [ Subset(dataset, indices) for indices in indices_list ]
     return subsets
 
-def dataset_split_1(dataset: Dataset, config: Config) -> 'list[Dataset]':
+def dataset_split_iid_range(dataset: Dataset, config: Config) -> 'list[Dataset]':
 
     random.seed()
     subsets: list[Subset] = [ None for i in range(config.client_num)]
@@ -92,7 +94,7 @@ def dataset_split_1(dataset: Dataset, config: Config) -> 'list[Dataset]':
 
     return subsets
 
-def dataset_split_2(dataset: Dataset, config: Config) -> 'list[Dataset]':
+def dataset_split_r(dataset: Dataset, config: Config) -> 'list[Dataset]':
     """
     r = config.sigma
     return value:

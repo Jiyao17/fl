@@ -28,17 +28,6 @@ class __SingleSimulator:
         server_task = UniTask.get_task(self.config)
         self.server = Server(server_task)
 
-        # set clients
-        # split datasets
-        if config.iid_test == 1:
-            # non-iid split
-            print("Spliting data non-iid")
-            datasets = dataset_split(trainset, self.config, 0)
-        else:
-            # uniformly split
-            print("Spliting data uniformly")
-            datasets = dataset_split(trainset, self.config, 1)
-
         self.clients: list[Client] = []
         for i in range(self.config.client_num):
             new_configs = copy.deepcopy(self.config)
@@ -47,6 +36,21 @@ class __SingleSimulator:
             # print(len(new_configs.l_trainset))d
             # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
             self.clients.append(Client(UniTask.get_task(new_configs)))
+
+    def split_datasets(self, trainset:Dataset):
+                # set clients
+        # split datasets
+        if self.config.test_type == "noniid-sigma":
+            # non-iid split
+            print("Spliting data non-iid")
+            datasets = dataset_split(trainset, self.config, 0)
+        else:
+            # uniformly split
+            print("Spliting data uniformly")
+            datasets = dataset_split(trainset, self.config, 1)
+
+        
+
 
     def start(self):
 
@@ -71,7 +75,7 @@ class __SingleSimulator:
         f_loss.write(conf_str)
         f_loss.flush()
 
-        if self.config.iid_test == 1:
+        if self.config.test_type == 1:
             self.regular_train(f, f_loss)  
             # self.grouped_train(f)
         else:

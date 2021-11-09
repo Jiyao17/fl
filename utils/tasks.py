@@ -26,6 +26,9 @@ from utils.models import FashionMNIST, SpeechCommand, AGNEWS
 
 
 class Config:
+
+    TEST_TYPES = ["iid", "noniid-sigma", "noniid-sigma-group", "noniid-r", "noniid-group"]
+
     def __init__(self,
         task_name: str,
         g_epoch_num: int,
@@ -44,7 +47,7 @@ class Config:
         l_trainset: Dataset=None,
         testset: Dataset=None,
         sigma: float=0.1,
-        iid_test: int=1,
+        test_type: str="iid",
         ) -> None:
 
         self.task_name: str = task_name
@@ -76,7 +79,7 @@ class Config:
         self.testset: Dataset = testset
         # non-IID degree
         self.sigma: int = sigma
-        self.iid_test = iid_test
+        self.test_type: str = test_type
 
     def __init__(self):
         if len(UniTask.supported_tasks) < 1:
@@ -98,7 +101,7 @@ class Config:
         self.l_trainset: Dataset = None
         self.testset: Dataset = None
         self.sigma: float = 0.1
-        self.iid_test: int = 1
+        self.test_type: str = "iid"
 
 
 class Task:

@@ -26,7 +26,7 @@ def iid_test():
         simulator.configs.simulation_num = 3
         
         simulator.configs.result_dir = "./result-noniid/"
-        simulator.configs.iid_test = 1
+        simulator.configs.test_type = 1
 
         simulator.start()
 
