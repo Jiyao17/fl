@@ -27,7 +27,7 @@ from utils.models import FashionMNIST, SpeechCommand, AGNEWS
 
 class Config:
 
-    TEST_TYPES = ["iid", "noniid-sigma", "noniid-sigma-group", "noniid-r", "noniid-group"]
+    TEST_TYPES = ["iid", "iid-range", "noniid-sigma", "noniid-sigma-group", "noniid-r", "noniid-group"]
 
     def __init__(self,
         task_name: str,
@@ -282,7 +282,7 @@ class TaskSpeechCommand(Task):
             self.model.parameters(), lr=self.configs.l_lr)
         self.get_dataloader()
 
-        waveform, sample_rate, label, speaker_id, utterance_number = self.trainset[0]
+        waveform, sample_rate, label, speaker_id, utterance_number = self.testset[0]
         new_sample_rate = 8000
         transform = Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
         # transformed: Resample = transform(waveform)
@@ -309,6 +309,7 @@ class TaskSpeechCommand(Task):
             pin_memory = False
 
         # test dataloader
+        self.testset = self.configs.testset
         self.test_dataloader = DataLoader(
                 self.testset,
                 batch_size=self.configs.l_batch_size,
@@ -319,15 +320,21 @@ class TaskSpeechCommand(Task):
                 pin_memory=pin_memory,
                 )
         # train dataloader
-        self.train_dataloader = DataLoader(
-            self.configs.l_trainset,
-            batch_size=self.configs.l_batch_size,
-            shuffle=True,
-            collate_fn=TaskSpeechCommand.collate_fn,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            drop_last=True
-            )
+        if 0 <= self.configs.reside and self.configs.reside <= self.configs.client_num:
+        #     data_num = self.configs.l_data_num
+        #     reside = self.configs.reside
+        #     self.trainset = Subset(Task.trainset,
+        #         Task.trainset_perm[data_num*reside: data_num*(reside+1)])
+            self.trainset = self.configs.l_trainset
+            self.train_dataloader = DataLoader(
+                self.trainset,
+                batch_size=self.configs.l_batch_size,
+                shuffle=True,
+                collate_fn=TaskSpeechCommand.collate_fn,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                drop_last=True
+                )
 
     def train(self):
         self.model.to(self.configs.device)
