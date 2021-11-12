@@ -1,0 +1,9 @@
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+AG_NEWS               500          3       6000           5           10  0.1    -1
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+AG_NEWS               500          3       6000           5           10  0.1    -1
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+AG_NEWS               500          3       6000           5           10  0.1    -1
+TASK          G_EPOCH_NUM CLIENT_NUM L_DATA_NUM L_EPOCH_NUM L_BATCH_SIZE L_LR SIGMA
+AG_NEWS               500          3       6000           5           10  0.1    -1
+0.77921 0.83697 0.85566 0.86816 0.87289 0.87592 0.87724 0.87987 0.88079 0.88105 0.88092 
