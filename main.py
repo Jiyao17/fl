@@ -31,12 +31,12 @@ def iid_test():
         simulator.start()
 
 def opt_test():
-    client_nums = [ 3, 4, 5, 6, 7 ]
+    client_nums = [ 6, 7 ]
     lrs = [0.005, 0.01, 0.1]
     result_dirs = ["./result-opt/", "./result-opt-1/", "./result-opt-2/"]
 
     # for i, task_name in enumerate(UniTask.supported_tasks):
-    task_num = 2
+    task_num = 1
 
     for client_num in client_nums:
         simulator: Simulator = Simulator()
