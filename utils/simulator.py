@@ -11,11 +11,11 @@ from torch.utils.data.dataset import Dataset
 from utils.client import Client
 from utils.server import Server
 from utils.tasks import UniTask, Config
-from utils.data import dataset_split
+from utils.data import dataset_split, dataset_split_iid
 
 def single_simulation(configs: Config):
     ssimulator = __SingleSimulator(configs)
-    ssimulator.start()
+    ssimulator.exps()
 
 class __SingleSimulator:
     def __init__(self, config: Config) -> None:
@@ -24,31 +24,27 @@ class __SingleSimulator:
         # set server
         trainset, testset = UniTask.get_datasets(self.config)
         self.config.reside = -1
+        self.trainset = trainset
         self.config.testset = testset
-        server_task = UniTask.get_task(self.config)
-        self.server = Server(server_task)
 
-        self.clients: list[Client] = []
-        datasets = dataset_split(trainset, self.config)
-        for i in range(self.config.client_num):
-            new_configs = copy.deepcopy(self.config)
-            new_configs.reside = i
-            new_configs.l_trainset = datasets[i]
-            # print(len(new_configs.l_trainset))d
-            # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
-            self.clients.append(Client(UniTask.get_task(new_configs)))
+    def exps(self):
+        for i in [ 3, 4, 5, 6, 7 ]:
+            self.config.client_num = i
+            server_task = UniTask.get_task(self.config)
+            self.server = Server(server_task)
 
-    # def split_datasets(self, trainset:Dataset):
-    #             # set clients
-    #     # split datasets
-    #     if self.config.test_type == "noniid-sigma":
-    #         # non-iid split
-    #         print("Spliting data non-iid")
-    #         datasets = dataset_split(trainset, self.config, 0)
-    #     else:
-    #         # uniformly split
-    #         print("Spliting data uniformly")
-    #         datasets = dataset_split(trainset, self.config, 1)
+            self.clients: list[Client] = []
+            
+            datasets = dataset_split_iid(self.trainset, 30)
+            for j in range(self.config.client_num):
+                new_configs = copy.deepcopy(self.config)
+                new_configs.reside = j
+                new_configs.l_trainset = datasets[j]
+                # print(len(new_configs.l_trainset))d
+                # print("reside @ client %d in simu %d" % (new_configs.reside, new_configs.simulation_index))
+                self.clients.append(Client(UniTask.get_task(new_configs)))
+
+            self.start()
 
 
     def start(self):

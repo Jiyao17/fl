@@ -128,3 +128,15 @@ def dataset_split_r(dataset: Dataset, config: Config) -> 'list[Dataset]':
 
     subsets = [ Subset(dataset, indices) for indices in indices_list ]
     return subsets
+
+def dataset_split_iid(dataset: Dataset, num: int) -> 'list[Dataset]':
+
+    random.seed(0)
+    subsets: list[Subset] = [ None for i in range(num)]
+    indices = [ i for i in range(len(dataset))]
+    random.shuffle(indices)
+    for i in range(num):
+        data_num = int(len(dataset) / 30)
+        subsets[i] = Subset(dataset, indices[i*data_num : (i+1)*data_num])
+
+    return subsets

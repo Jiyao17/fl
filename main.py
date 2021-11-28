@@ -31,30 +31,30 @@ def iid_test():
         simulator.start()
 
 def opt_test():
-    client_nums = [ 6, 7 ]
-    lrs = [0.005, 0.01, 0.1]
+    client_nums = [ 3, 4, 5, 6, 7 ]
+    lrs = [0.0025, 0.01, 0.05]
     result_dirs = ["./result-opt/", "./result-opt-1/", "./result-opt-2/"]
 
     # for i, task_name in enumerate(UniTask.supported_tasks):
     task_num = 1
 
-    for client_num in client_nums:
-        simulator: Simulator = Simulator()
-        # simulator.configs.client_num = 100
-        simulator.configs.l_data_num = 6000
-        simulator.configs.l_epoch_num = 5
-        simulator.configs.l_batch_size = 10
-        simulator.configs.g_epoch_num = 500
-        simulator.configs.sigma = -1
-        simulator.configs.simulation_num = 3
-        simulator.configs.result_dir = result_dirs[task_num]
-        simulator.configs.test_type = "iid-range"
-        
-        simulator.configs.task_name = UniTask.supported_tasks[task_num]
-        simulator.configs.l_lr = lrs[task_num]
-        simulator.configs.client_num = client_num
+    # for client_num in client_nums:
+    simulator: Simulator = Simulator()
+    # simulator.configs.client_num = 100
+    simulator.configs.l_data_num = 6000
+    simulator.configs.l_epoch_num = 5
+    simulator.configs.l_batch_size = 10
+    simulator.configs.g_epoch_num = 500
+    simulator.configs.sigma = -1
+    simulator.configs.simulation_num = 1
+    simulator.configs.result_dir = result_dirs[task_num]
+    simulator.configs.test_type = "iid-range"
+    
+    simulator.configs.task_name = UniTask.supported_tasks[task_num]
+    simulator.configs.l_lr = lrs[task_num]
+    simulator.configs.client_num = 3
 
-        simulator.start()
+    simulator.start()
 
 
 
@@ -64,15 +64,30 @@ if __name__ == "__main__":
     # if get_start_method(False) != "spawn":
     set_start_method("spawn")
 
-    iid = 0
-    if iid == 1:
-        iid_test()
-    else:
-        opt_test()
+    # client_nums = [ 3, 4, 5, 6, 7 ]
 
+    lrs = [0.0015, 0.01, 0.04]
+    result_dirs = ["./result-opt/", "./result-opt-1/", "./result-opt-2/"]
+
+    # for i, task_name in enumerate(UniTask.supported_tasks):
+    task_num = 2
+
+    # for client_num in client_nums:
+    simulator: Simulator = Simulator()
+    # simulator.configs.client_num = 100
+    simulator.configs.l_data_num = 6000
+    simulator.configs.l_epoch_num = 5
+    simulator.configs.l_batch_size = 50
+    simulator.configs.g_epoch_num = 300
+    simulator.configs.sigma = -1
+    simulator.configs.simulation_num = 3
+    simulator.configs.result_dir = result_dirs[task_num]
+    simulator.configs.test_type = "iid-range"
     
+    simulator.configs.task_name = UniTask.supported_tasks[task_num]
+    simulator.configs.l_lr = lrs[task_num]
+    simulator.configs.client_num = 3
 
-
-    # print(simulator.configs.l_data_num)
+    simulator.start()
 
 
